@@ -1,10 +1,11 @@
 # Execution Plan: sculpt-engine-core
 
 Started: 2026-07-19
-Status: COMPLETE (all 16 tasks done 2026-07-23)
+Status: COMPLETE (all 16 tasks done 2026-07-23); acceptance check run 2026-07-23 — PARTIAL (19/23 pass, 4 partial, 0 fail; all gaps are verification gaps, not functional ones — see report)
 
 Spec: docs/specs/sculpt-engine-core.md
 Tasks: docs/tasks/sculpt-engine-core-tasks.md
+Acceptance report: docs/plans/active/sculpt-engine-core-acceptance-2026-07-23.md
 
 ## Progress
 - [x] 01 — Project scaffold (Vite + React + TS strict + Vitest)
