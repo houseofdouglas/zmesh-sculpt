@@ -18,7 +18,7 @@ Tasks: docs/tasks/sculpt-engine-core-tasks.md
 - [x] 09 — Q-01 benchmark spike (triangle budget → Max detail)
 - [x] 10 — Brushes part 1: Smooth + Inflate
 - [x] 11 — Brushes part 2: Pinch + Crease + Flatten + registry
-- [ ] 12 — Stroke stamping + Grab
+- [x] 12 — Stroke stamping + Grab
 - [ ] 13 — X-mirror symmetry
 - [ ] 14 — Undo/redo history
 - [ ] 15 — SculptEngine facade + change notification
@@ -47,3 +47,8 @@ Tasks: docs/tasks/sculpt-engine-core-tasks.md
 - manifold-3d de-risked early in Task 05 before committing to it in Task 16 (revisit ADR if the spike fails).
 - Brush work split: Draw (08, template) → Smooth+Inflate (10) → Pinch+Crease+Flatten+registry (11); Grab is stroke-stateful (12).
 - Smooth-invert is a no-op in v1 (sharpen deferred).
+- Task 12: `StrokeSampler` (the six stamp brushes) is a distance-accumulator, not a per-pointer-event stamper — it walks each new segment (`lastSamplePoint` → new hit) and emits a stamp every `radius * STAMP_SPACING_FRACTION` (0.25) mm of travel, carrying over leftover sub-spacing distance across calls. This is what makes fast vs. slow strokes over the same path produce identical stamp coverage (FR-7): both are driven by path length, not call count or elapsed time. Stamp normals between two sparse samples are lerp-then-renormalize of the segment's two endpoint normals (falls back to the newer endpoint's normal if the blend is near-zero-length, i.e. two near-opposite normals).
+- Task 12: an off-mesh `update(null)` sets a `gapPending` flag rather than immediately re-anchoring — this is deliberate: it defers the "where does the path resume" decision to the *next* real hit, so the stroke never interpolates a line of stamps through the gap (which could cut across empty space or the far side of the mesh, per the spec's edge-case table). Re-entering the surface after a gap behaves like a fresh touch-down (re-anchor + stamp immediately at the re-entry point), same as `begin`.
+- Task 12: **Grab is deliberately not a `BrushKernel`** — every stamp kernel recomputes its affected set fresh from live positions each stamp, but Grab must rigidly carry the *same* vertex set (and per-vertex falloff weight) captured at touch-down for the whole drag; recomputing mid-drag would let the grabbed region slide off the vertices it originally grabbed as they move away from the original stamp center. `GrabStroke` therefore lives in `engine/stroke.ts` (constructed once per grab from the touch-down stamp + a spatial-hash query the caller ran) rather than `core/brushes/`. It reuses `computeFalloff` and the shared `clampVectorMagnitude` safety-cap helper from Task 08/11's `brush-kernel.ts` rather than duplicating them.
+- Task 12: Grab's `update` derives the drag delta from consecutive hit points when the viewport doesn't supply `worldDelta` (spec marks `worldDelta` optional on `SurfaceHit`), so it works either way upstream chooses to report cursor motion.
+- Task 12: per the spec's brush table, Grab's invert is "n/a (direction is the drag)" — implemented by taking `Math.abs(stamp.strength)` as the per-vertex pull scale at construction, so a negative (inverted) strength has no effect on Grab specifically, unlike every displacement brush where sign flips the direction.

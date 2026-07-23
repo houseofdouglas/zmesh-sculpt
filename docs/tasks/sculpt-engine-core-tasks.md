@@ -214,7 +214,8 @@ The tangent-plane / planar behaviors: Pinch (toward center in tangent plane), Cr
 
 ## Task: 12 — Stroke stamping + Grab
 
-**Layer**: Engine · **Estimate**: 3hr · **Depends on**: 08 · **Status**: PENDING
+**Layer**: Engine · **Estimate**: 3hr · **Depends on**: 08 · **Status**: DONE
+**Completed**: 2026-07-23
 
 ### What to build
 `engine/stroke.ts`: convert a sequence of pointer `SurfaceHit`s into size-spaced stamps (speed-independent, FR-7), interpolating between sparse samples. Implement Grab here as the stroke-stateful brush: fix the affected set on `beginStroke`, translate by `worldDelta·falloff` each update until `endStroke`.
