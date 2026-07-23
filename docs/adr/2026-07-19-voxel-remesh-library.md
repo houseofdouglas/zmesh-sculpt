@@ -19,5 +19,10 @@ The remesher must sit behind a narrow, in-house interface (e.g. `remesh(mesh, ta
 
 - **Positive**: unblocks the whole v1 feature set; the owner still learns the surrounding machinery (validation, serialization, brush math) which is plenty educational; the isosurface algorithm can be studied and reimplemented later as a focused learning project behind the stable interface.
 - **Negative**: relaxes the in-house-core principle for one component; adds a dependency that must be vetted for license, bundle size, WASM footprint, and manifold-output guarantees.
-- **Candidates to evaluate** (not yet chosen): WASM builds of manifold/CSG libraries (e.g. the `manifold-3d` family), marching-cubes/surface-nets libraries, or a small in-house surface-nets pass over a library-provided SDF. Selection is a task in the remesh spec.
-- **Revisit if**: bundle size or licensing proves unacceptable, output is not reliably manifold, or the owner chooses to make the remesher the in-house learning centerpiece.
+- **Candidates evaluated** (initial scan 2026-07-19):
+  - **`manifold-3d`** (elalish/manifold) — **leading candidate.** WASM, runs in-browser; the library's core guarantee is topological robustness / manifold output, which directly serves our watertight invariant. Ships a `LevelSet` operation (SDF → isosurface) that is exactly the voxel-remesh primitive our detail slider needs, plus documented Three.js interop. Apache-2.0.
+  - Marching-cubes / surface-nets npm libraries — lighter, but they only do isosurface extraction; we'd still own the SDF sampling and manifold guarantees. Fallback if `manifold-3d` bundle/WASM footprint proves too heavy.
+  - In-house surface-nets over a library-provided SDF — the "learning centerpiece" path, deferred.
+  - **Decision**: adopt `manifold-3d` as the best-shot v1 implementation behind the `remesh()` seam; benchmark it in the Q-01 spike.
+- **Related insight**: `manifold-3d`'s docs note STL round-trips are not guaranteed to re-import as manifold and recommend 3MF for solids. This reinforces keeping 3MF on the roadmap (FR-20) and makes zmesh's own export-time validation (FR-09) essential for the STL path.
+- **Revisit if**: bundle size or WASM footprint is unacceptable, output is not reliably manifold in practice, licensing changes, or the owner chooses to make the remesher the in-house learning centerpiece.
