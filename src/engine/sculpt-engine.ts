@@ -7,18 +7,28 @@ import { STAMP_BRUSH_KERNELS, type BrushKernel, type Stamp, type StampBrushType 
 import { StrokeSampler, type SurfaceHit } from './stroke';
 import { SymmetricGrabStroke, symmetricStamps, type SymmetryAxis } from './symmetry';
 import { SculptHistory, type HistoryEntry } from './history';
+import {
+  DETAIL_TARGET_TRIANGLE_COUNTS,
+  createWorkerRemeshRunner,
+  type DetailLevel,
+  type RemeshRunner,
+} from './detail';
 
+export type { DetailLevel } from './detail';
 export type BrushType = StampBrushType | 'grab';
 export type PrimitiveShape = 'sphere' | 'egg' | 'block' | 'capsule';
 
-/**
- * Discrete detail levels (FR-15). Just the type lives here for now — the
- * level-to-target-triangle-count mapping and worker dispatch is
- * `engine/detail.ts`, a Task 16 file, since it needs `remesh()` (Task 16)
- * to mean anything. `getDetail`/`getMaxDetail` below are real; `setDetail`
- * is a typed placeholder until then (see its doc comment).
- */
-export type DetailLevel = 'low' | 'med' | 'high' | 'max';
+export interface SculptEngineOptions {
+  /**
+   * Overrides the `RemeshRunner` `setDetail` dispatches to. Production
+   * code should never need this (it defaults to the real Web Worker
+   * dispatch); tests inject a fake runner so `setDetail`'s surrounding
+   * orchestration — clamping, history, reject-and-restore, progress
+   * relay — can be exercised without a real Worker or WASM (neither
+   * exists in this project's Node-based Vitest environment).
+   */
+  remeshRunner?: RemeshRunner;
+}
 
 export interface DirtyRegion {
   /** lowest touched vertex index */
@@ -80,14 +90,21 @@ export class SculptEngine {
   private strokeAxis: SymmetryAxis = 'x';
 
   private readonly changeListeners = new Set<(region: DirtyRegion) => void>();
+  private readonly remeshProgressListeners = new Set<(fraction: number) => void>();
+  private readonly remeshRunner: RemeshRunner;
 
-  constructor() {
+  constructor(options: SculptEngineOptions = {}) {
     // FR-01: sphere is the default first-run starting shape.
     const initial = sphere();
     this.mesh = initial;
     this.adjacency = buildVertexAdjacency(initial);
     this.spatialHash = buildSpatialHash(initial);
     this.history = new SculptHistory();
+    // Lazily-invoked: constructing this closure never touches `Worker`
+    // itself, only *calling* it does (inside setDetail) — so building an
+    // engine with no options is safe even in an environment (like this
+    // project's Vitest/Node setup) that has no `Worker` global at all.
+    this.remeshRunner = options.remeshRunner ?? createWorkerRemeshRunner();
   }
 
   // ---- mesh lifecycle ----
@@ -175,11 +192,11 @@ export class SculptEngine {
   // ---- history ----
 
   undo(): void {
-    this.applyHistoryEntry(this.history.undo(this.mesh.positions));
+    this.applyHistoryEntry(this.history.undo(this.mesh.positions), 'before');
   }
 
   redo(): void {
-    this.applyHistoryEntry(this.history.redo(this.mesh.positions));
+    this.applyHistoryEntry(this.history.redo(this.mesh.positions), 'after');
   }
 
   get canUndo(): boolean {
@@ -197,16 +214,31 @@ export class SculptEngine {
   }
 
   /**
-   * Not implemented yet: needs `remesh()` and the worker dispatch, both
-   * Task 16. `getDetail`/`getMaxDetail` are real (and `getMaxDetail`
-   * already reflects the resolved Q-01 clamp) so the rest of this
-   * facade's typed surface is complete now; only the actual remesh
-   * behavior is deferred.
+   * Remeshes toward `level`'s target triangle count (FR-15/17) via the
+   * injected `RemeshRunner` (the real Web Worker dispatch in production).
+   * Resolves once the new mesh is live; rejects — leaving mesh, history,
+   * and `detailLevel` completely untouched — if the runner rejects
+   * (remesh failure, timeout, or a non-manifold result; `remesh()` itself
+   * already refuses to resolve with one). Nothing below the `await` runs
+   * on a rejection, which is what makes "leaves mesh + history untouched"
+   * automatic rather than something to unwind by hand.
+   *
+   * Detail-level bookkeeping (`getDetail()`) is not itself part of any
+   * history entry — a `RemeshHistoryEntry` (spec's Data Model) only
+   * carries before/after meshes, no level — so undoing past a remesh
+   * leaves `getDetail()` reporting whichever level was last *successfully
+   * set*, which may no longer match the now-restored mesh's actual
+   * resolution. Accepted: nothing in the spec's acceptance criteria
+   * exercises `getDetail()` across an undo of a remesh.
    */
-  setDetail(_level: DetailLevel): Promise<void> {
-    return Promise.reject(
-      new Error('setDetail is not implemented until remesh() is wired in (Task 16)'),
-    );
+  async setDetail(level: DetailLevel): Promise<void> {
+    const target = DETAIL_TARGET_TRIANGLE_COUNTS[level];
+    const before = this.mesh;
+    const after = await this.remeshRunner(before, target, (fraction) => {
+      this.emitRemeshProgress(fraction);
+    });
+    this.commitRemesh(before, after);
+    this.detailLevel = level;
   }
 
   getMaxDetail(): DetailLevel {
@@ -223,15 +255,29 @@ export class SculptEngine {
     };
   }
 
+  /**
+   * Reports remesh progress (FR-16 — "reporting progress"). Not part of
+   * the spec's originally-drafted Engine API interface block (which had
+   * no way to observe `setDetail`'s progress at all despite requiring it
+   * be reported), so this is one small additive extension to that
+   * surface — the same class of deliberate, documented deviation as
+   * `updateStroke` accepting `null`.
+   */
+  onRemeshProgress(cb: (fraction: number) => void): () => void {
+    this.remeshProgressListeners.add(cb);
+    return () => {
+      this.remeshProgressListeners.delete(cb);
+    };
+  }
+
   // ---- internals ----
 
   private replaceMesh(mesh: SculptMesh): void {
-    this.mesh = mesh;
-    this.adjacency = buildVertexAdjacency(mesh);
-    this.spatialHash = buildSpatialHash(mesh);
-    // A new topology invalidates every existing history entry (their
-    // vertex indices refer to the old mesh's layout, not this one), so a
-    // fresh mesh load starts a fresh history — same as a new session.
+    this.replaceMeshKeepingHistory(mesh);
+    // Unlike a remesh (commitRemesh), a fresh loadMesh/newFromPrimitive is
+    // a new document: every existing history entry's vertex indices refer
+    // to the OLD mesh's layout, not this one, so they're discarded rather
+    // than kept around meaninglessly.
     this.history = new SculptHistory();
   }
 
@@ -371,34 +417,83 @@ export class SculptEngine {
    * the same bit-identical normals that existed at that point originally
    * — no separate normals buffer needs to be stored per entry.
    *
-   * A remesh entry isn't produced by `SculptHistory` yet (Task 16), so
-   * there's nothing to do for that branch here today.
+   * A remesh entry, unlike a stroke, swaps the whole mesh: `SculptHistory`
+   * doesn't (and can't) touch it, since applying it means rebuilding
+   * adjacency/spatial-hash too — this is that facade-level mesh swap the
+   * entry's own doc comment says only the facade can do. `side` tells us
+   * which snapshot to restore to, since one popped entry serves both
+   * `undo` (-> `beforeMesh`) and `redo` (-> `afterMesh`).
    */
-  private applyHistoryEntry(entry: HistoryEntry | null): void {
-    if (!entry || entry.kind !== 'stroke') {
+  private applyHistoryEntry(entry: HistoryEntry | null, side: 'before' | 'after'): void {
+    if (!entry) {
       return;
     }
-    const indices = Array.from(entry.indices);
-    recomputeAffectedRegionNormals(
-      this.mesh.positions,
-      this.mesh.indices,
-      this.mesh.normals,
-      this.adjacency,
-      indices,
-    );
-    for (const v of indices) {
-      updateVertexPosition(this.spatialHash, this.mesh.positions, v);
+    if (entry.kind === 'stroke') {
+      const indices = Array.from(entry.indices);
+      recomputeAffectedRegionNormals(
+        this.mesh.positions,
+        this.mesh.indices,
+        this.mesh.normals,
+        this.adjacency,
+        indices,
+      );
+      for (const v of indices) {
+        updateVertexPosition(this.spatialHash, this.mesh.positions, v);
+      }
+      this.emitDirtyRegion(indices);
+      return;
     }
-    this.emitDirtyRegion(indices);
+
+    this.replaceMeshKeepingHistory(side === 'before' ? entry.beforeMesh : entry.afterMesh);
+    this.emitFullMeshDirtyRegion();
+  }
+
+  /**
+   * Commits a successful remesh as exactly one undo entry (FR-12) and
+   * swaps in the new mesh. Unlike `replaceMesh` (loadMesh/newFromPrimitive
+   * — a genuinely new document), this deliberately keeps the existing
+   * history so the remesh itself stays undoable.
+   */
+  private commitRemesh(before: SculptMesh, after: SculptMesh): void {
+    this.history.pushRemesh(before, after);
+    this.replaceMeshKeepingHistory(after);
+    this.emitFullMeshDirtyRegion();
+  }
+
+  private replaceMeshKeepingHistory(mesh: SculptMesh): void {
+    this.mesh = mesh;
+    this.adjacency = buildVertexAdjacency(mesh);
+    this.spatialHash = buildSpatialHash(mesh);
   }
 
   private emitDirtyRegion(affected: readonly number[]): void {
     if (affected.length === 0 || this.changeListeners.size === 0) {
       return;
     }
-    const region = computeDirtyRegion(this.mesh.positions, affected);
+    this.notifyChange(computeDirtyRegion(this.mesh.positions, affected));
+  }
+
+  /** A remesh touches the whole mesh (new topology, not a vertex subset), so the dirty region is the whole thing. */
+  private emitFullMeshDirtyRegion(): void {
+    if (this.changeListeners.size === 0) {
+      return;
+    }
+    this.notifyChange({
+      vertexStart: 0,
+      vertexEnd: this.mesh.vertexCount,
+      aabb: { min: [...this.mesh.bounds.min], max: [...this.mesh.bounds.max] },
+    });
+  }
+
+  private notifyChange(region: DirtyRegion): void {
     for (const cb of this.changeListeners) {
       cb(region);
+    }
+  }
+
+  private emitRemeshProgress(fraction: number): void {
+    for (const cb of this.remeshProgressListeners) {
+      cb(fraction);
     }
   }
 }

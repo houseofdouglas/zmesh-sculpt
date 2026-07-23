@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { SculptEngine, type DirtyRegion } from './sculpt-engine';
-import type { SculptMesh } from '../core/mesh/sculpt-mesh';
+import { createSculptMesh, type SculptMesh } from '../core/mesh/sculpt-mesh';
 import type { SurfaceHit } from './stroke';
+import type { RemeshRunner } from './detail';
 
 function nearestVertex(mesh: Readonly<SculptMesh>, target: readonly [number, number, number]): number {
   let best = -1;
@@ -282,10 +283,77 @@ describe('SculptEngine', () => {
     expect(engine.canRedo).toBe(false);
   });
 
-  it('exposes typed detail getters; setDetail is not yet implemented (Task 16)', async () => {
+  it('exposes typed detail getters (getMaxDetail reflects the Q-01 clamp)', () => {
     const engine = new SculptEngine();
     expect(engine.getDetail()).toBe('med');
     expect(engine.getMaxDetail()).toBe('max');
-    await expect(engine.setDetail('high')).rejects.toThrow();
+  });
+
+  it('setDetail remeshes via the injected runner, commits one undo entry, and reports progress', async () => {
+    const halvedMesh = halveTriangleCountMesh();
+    const progress: number[] = [];
+    const runner: RemeshRunner = async (mesh, targetTriangleCount, onProgress) => {
+      expect(mesh.vertexCount).toBeGreaterThan(0);
+      expect(targetTriangleCount).toBeGreaterThan(0);
+      onProgress?.(0);
+      onProgress?.(1);
+      return halvedMesh;
+    };
+    const engine = new SculptEngine({ remeshRunner: runner });
+    engine.onRemeshProgress((fraction) => progress.push(fraction));
+
+    expect(engine.canUndo).toBe(false);
+    await engine.setDetail('low');
+
+    expect(engine.getDetail()).toBe('low');
+    expect(engine.getMesh()).toBe(halvedMesh);
+    expect(progress).toEqual([0, 1]);
+    expect(engine.canUndo).toBe(true);
+  });
+
+  it('undo/redo of a remesh restores the exact prior/new topology', async () => {
+    const originalSphere = new SculptEngine().getMesh();
+    const halvedMesh = halveTriangleCountMesh();
+    const runner: RemeshRunner = async () => halvedMesh;
+    const engine = new SculptEngine({ remeshRunner: runner });
+    const beforeRemesh = engine.getMesh();
+
+    await engine.setDetail('low');
+    expect(engine.getMesh().vertexCount).toBe(halvedMesh.vertexCount);
+
+    engine.undo();
+    expect(engine.getMesh()).toBe(beforeRemesh);
+    expect(engine.getMesh().vertexCount).toBe(originalSphere.vertexCount);
+    expect(engine.canRedo).toBe(true);
+
+    engine.redo();
+    expect(engine.getMesh()).toBe(halvedMesh);
+  });
+
+  it('a failed setDetail rejects and leaves mesh, history, and detail level untouched', async () => {
+    const failingRunner: RemeshRunner = async () => {
+      throw new Error('simulated remesh failure');
+    };
+    const engine = new SculptEngine({ remeshRunner: failingRunner });
+    const meshBefore = engine.getMesh();
+
+    await expect(engine.setDetail('max')).rejects.toThrow('simulated remesh failure');
+
+    expect(engine.getMesh()).toBe(meshBefore);
+    expect(engine.getDetail()).toBe('med'); // unchanged from its default
+    expect(engine.canUndo).toBe(false);
   });
 });
+
+/** A trivial, cheap-to-construct mesh distinct from any real primitive, standing in for a remesh() result. */
+function halveTriangleCountMesh(): SculptMesh {
+  // prettier-ignore
+  const positions = new Float32Array([
+    0, 1, 0,
+    -1, -1, 1,
+    1, -1, 1,
+    0, -1, -1,
+  ]);
+  const indices = new Uint32Array([0, 1, 2, 0, 2, 3, 0, 3, 1, 1, 3, 2]);
+  return createSculptMesh(positions, indices);
+}

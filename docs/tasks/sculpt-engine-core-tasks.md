@@ -288,7 +288,8 @@ The `SculptEngine` class implementing the spec's API: mesh lifecycle, brush conf
 
 ## Task: 16 — Remesh integration (`manifold-3d`) + detail levels + worker
 
-**Layer**: Core/Engine · **Estimate**: 4hr · **Depends on**: 04, 05, 15 · **Status**: PENDING
+**Layer**: Core/Engine · **Estimate**: 4hr · **Depends on**: 04, 05, 15 · **Status**: DONE
+**Completed**: 2026-07-23
 
 ### What to build
 Promote the Task 05 spike into `core/remesh/remesh.ts` behind the `remesh()` seam, validated with Task 04's checker. `engine/detail.ts` maps `DetailLevel`→target triangle count and dispatches remesh to a Web Worker with progress; commit a remesh history snapshot entry (undoable). Reject-and-restore on failure or non-manifold output.

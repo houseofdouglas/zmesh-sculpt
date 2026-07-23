@@ -101,6 +101,19 @@ export class SculptHistory {
   }
 
   /**
+   * Commits a completed remesh as exactly one undo entry (FR-12), same
+   * redo-truncation and eviction rules as `pushStroke`. Unlike a stroke
+   * entry, this module never applies a remesh entry's mesh swap itself —
+   * see {@link RemeshHistoryEntry} — the caller does that from the
+   * entry `undo`/`redo` hand back.
+   */
+  pushRemesh(beforeMesh: SculptMesh, afterMesh: SculptMesh): void {
+    this.redoStack.length = 0;
+    this.undoStack.push({ kind: 'remesh', beforeMesh, afterMesh });
+    this.evictOverBudgetEntries();
+  }
+
+  /**
    * Undoes the most recent entry. For a stroke entry, restores its
    * touched vertices in `positions` to their bit-identical prior values
    * and returns the entry; a remesh entry is returned without touching
