@@ -178,7 +178,8 @@ The scripted benchmark harness from the spec: generate spheres from ~20k→1M tr
 
 ## Task: 10 — Brushes part 1: Smooth + Inflate
 
-**Layer**: Core · **Estimate**: 2hr · **Depends on**: 08 · **Status**: PENDING
+**Layer**: Core · **Estimate**: 2hr · **Depends on**: 08 · **Status**: DONE
+**Completed**: 2026-07-23
 
 ### What to build
 Two behaviors following the Task 08 template: Smooth (Laplacian toward one-ring average; invert = **no-op** per spec) and Inflate (displace along each vertex's own normal).

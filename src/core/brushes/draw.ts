@@ -1,4 +1,4 @@
-import type { BrushKernel } from './brush-kernel';
+import { clampDisplacement, type BrushKernel } from './brush-kernel';
 import { computeFalloff } from './falloff';
 
 /**
@@ -7,14 +7,6 @@ import { computeFalloff } from './falloff';
  * tuning (see the spec's Open Questions on per-brush strength scales).
  */
 const DRAW_STRENGTH_SCALE_MM = 2;
-
-/**
- * Safety cap on displacement per stamp, regardless of strength or
- * falloff — guards against self-intersection blow-ups from a fast stroke
- * or an extreme strength value (spec: "no vertex may move more than a
- * safety cap per stamp").
- */
-const MAX_STAMP_DISPLACEMENT_MM = 5;
 
 /**
  * Draw: displaces affected vertices along the stamp's own surface normal
@@ -45,20 +37,10 @@ export const applyDraw: BrushKernel = (context) => {
       continue;
     }
 
-    const displacement = clamp(
-      strength * falloff * DRAW_STRENGTH_SCALE_MM,
-      -MAX_STAMP_DISPLACEMENT_MM,
-      MAX_STAMP_DISPLACEMENT_MM,
-    );
+    const displacement = clampDisplacement(strength * falloff * DRAW_STRENGTH_SCALE_MM);
 
     positions[vertexIndex * 3] = px + normal[0] * displacement;
     positions[vertexIndex * 3 + 1] = py + normal[1] * displacement;
     positions[vertexIndex * 3 + 2] = pz + normal[2] * displacement;
   }
 };
-
-function clamp(value: number, min: number, max: number): number {
-  if (value < min) return min;
-  if (value > max) return max;
-  return value;
-}

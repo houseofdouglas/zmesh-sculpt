@@ -35,3 +35,17 @@ export interface BrushKernelContext {
 }
 
 export type BrushKernel = (context: BrushKernelContext) => void;
+
+/**
+ * Safety cap on displacement per stamp (mm), regardless of strength or
+ * falloff — guards against self-intersection blow-ups from a fast stroke
+ * or an extreme strength value (spec: "no vertex may move more than a
+ * safety cap per stamp"). Shared by every displacement-based brush.
+ */
+export const MAX_STAMP_DISPLACEMENT_MM = 5;
+
+export function clampDisplacement(value: number): number {
+  if (value < -MAX_STAMP_DISPLACEMENT_MM) return -MAX_STAMP_DISPLACEMENT_MM;
+  if (value > MAX_STAMP_DISPLACEMENT_MM) return MAX_STAMP_DISPLACEMENT_MM;
+  return value;
+}
