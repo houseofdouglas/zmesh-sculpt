@@ -104,7 +104,8 @@ Install `manifold-3d` and prove the remesh primitive works before committing to 
 
 ## Task: 06 — One-ring adjacency (CSR)
 
-**Layer**: Core · **Estimate**: 2hr · **Depends on**: 02 · **Status**: PENDING
+**Layer**: Core · **Estimate**: 2hr · **Depends on**: 02 · **Status**: DONE
+**Completed**: 2026-07-23
 
 ### What to build
 Build per-vertex one-ring neighbor lists in CSR form (offset + flat index arrays) from `indices`. Needed by Smooth and by normal recomputation.
