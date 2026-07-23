@@ -100,12 +100,11 @@ None external. Browser platform APIs only: WebGPU/WebGL2, IndexedDB, File System
 |----|----------|------------|
 | Q-02 | Build the voxel remesher in-house or use a library? | **Library permitted** for v1. Relaxes the constitution's in-house-core preference for this one component; record as an ADR documenting the trade-off and candidate libraries. |
 | Q-03 | Is desktop-only acceptable for v1? | **Yes — desktop-first.** Touch/stylus (FR-30) explicitly deferred to COULD. |
+| Q-01 | What triangle budget sustains 60 fps on the M1 baseline? Sets the detail ceiling (BR-03). | **500,000** (Max detail level). ≥60fps holds to ~199k triangles, ≥30fps to ~499k — measured 2026-07-23 via `npm run bench:sculpt`; see `docs/design/q01-triangle-budget-findings.md`. |
 
 ## Open Questions
 
-| ID | Question | Impact | Owner | Status |
-|----|----------|--------|-------|--------|
-| Q-01 | What triangle budget sustains 60 fps on the M1 baseline? Sets the detail ceiling (BR-03). | High — shapes engine design | Benchmark spike, first implementation task | Open |
+None remaining for v1 as of 2026-07-23.
 
 ## Out of Scope
 

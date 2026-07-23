@@ -159,7 +159,9 @@ Uniform-grid spatial hash over vertex positions supporting "all vertices within 
 
 ## Task: 09 — Q-01 benchmark spike (triangle budget → Max detail)
 
-**Layer**: Test/Spike · **Estimate**: 3hr · **Depends on**: 03, 07, 08 · **Status**: PENDING
+**Layer**: Test/Spike · **Estimate**: 3hr · **Depends on**: 03, 07, 08 · **Status**: DONE
+**Completed**: 2026-07-23
+**Result**: Max = 500,000 triangles (≥60fps to ~199k, ≥30fps to ~499k). Full findings in `docs/design/q01-triangle-budget-findings.md`, including an identified O(triangleCount) bottleneck in Task 08's normal-recompute helper.
 
 ### What to build
 The scripted benchmark harness from the spec: generate spheres from ~20k→1M triangles, apply a scripted Draw stroke sequence at each size, measure sustained per-stamp frame time (query + deform + normals + dirty-emit; rendering measured separately in the viewport spec), and report the largest triangle count holding ≥60 fps on the M1 baseline.

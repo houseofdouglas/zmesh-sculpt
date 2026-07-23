@@ -12,7 +12,8 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "bench:sculpt": "vite-node src/core/__bench__/sculpt-bench.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",

@@ -120,7 +120,7 @@ Derived/auxiliary (not serialized): `adjacency` (one-ring, CSR-style offset+inde
 
 ### `DetailLevel`
 
-`'low' | 'med' | 'high' | 'max'` -> provisional target triangle counts **~20k / ~80k / ~200k / (Max = TBD by Q-01)**. Placeholder Max ~= 500k pending the benchmark.
+`'low' | 'med' | 'high' | 'max'` -> target triangle counts **~20k / ~80k / ~200k / 500,000**. Max confirmed by the Q-01 benchmark (2026-07-23): ≥60fps holds to ~199k triangles, ≥30fps to ~499k — see `docs/design/q01-triangle-budget-findings.md`. The bottleneck at scale is a known, already-flagged O(triangleCount) scan in the normal-recompute helper (Task 08's `findTrianglesTouchingVertices`), not the spatial-hash query or brush math; a future precomputed vertex→triangle incidence structure would likely raise this ceiling if a higher Max is wanted later.
 
 ---
 
@@ -266,14 +266,11 @@ Common rules: no vertex may move more than a safety cap per stamp (prevents self
 
 ---
 
-## Q-01 Benchmark Spike (first task in this spec)
+## Q-01 Benchmark Spike — RESOLVED (2026-07-23)
 
-A dedicated, throwaway-friendly harness that:
-1. Generates spheres at increasing triangle counts (e.g., 20k -> 1M).
-2. Programmatically applies a scripted Draw+Grab stroke sequence per size, measuring sustained frame time (stamp + normal recompute + dirty-emit; rendering measured separately in the viewport spec).
-3. On the M1 baseline, reports the largest triangle count that holds ≥60 fps end-to-end.
+`src/core/__bench__/sculpt-bench.ts` (`npm run bench:sculpt`): generates spheres at six triangle counts (20k → 1M), runs a scripted 60-stamp Draw stroke along a great-circle arc at each size, and measures sustained per-stamp time (spatial-hash query + brush deform + affected-region normal recompute + a dirty-AABB stand-in; rendering is measured separately in the viewport spec).
 
-**Output**: the concrete triangle budget -> sets the `Max` `DetailLevel` target and `getMaxDetail()` clamp (resolves BR-03 / requirements Q-01). Until it runs, the provisional Max ~= 500k is a placeholder and must not be treated as final.
+**Result**: ≥60fps (Med target, NFR-01) holds to ~199k triangles; ≥30fps (Max target) holds to ~499k. **`Max` is set to 500,000 triangles.** Full findings, including the identified O(triangleCount) bottleneck and a note for future headroom, are in `docs/design/q01-triangle-budget-findings.md`.
 
 ---
 
@@ -296,11 +293,11 @@ This spec intentionally does **not** cover:
 |---|---|
 | Should **Smooth invert** sharpen or be a no-op? | **No-op in v1.** Sharpen (amplify deviation from neighbor average) is a reasonable future addition but needs feel-tuning; deferred. |
 | Build the remesher or use a library? | **Best-shot library first** (behind the `remesh()` seam); revisit with an in-house implementation only if the library fails an FR/NFR. Candidates tracked in ADR 2026-07-19. |
+| Q-01: triangle budget for ≥60fps at Med on M1? | **500,000** for Max (≥60fps holds to ~199k, ≥30fps to ~499k). See `docs/design/q01-triangle-budget-findings.md` — identifies the O(triangleCount) normal-recompute scan as the actual bottleneck at scale. |
 
 ## Open Questions
 
 | Question | Owner | Resolution |
 |---|---|---|
-| Q-01: triangle budget for ≥60 fps at Med on M1? | Benchmark spike (first task) | Sets Max detail; provisional 500k until measured |
 | Which specific remesh library behind `remesh()`? | Impl task (library scan) | Vetted for manifold output, bundle size, license (ADR candidates) |
 | Exact per-brush strength scale `k` values | Tuning during implementation | Feel-based; defaults set, refined interactively |
