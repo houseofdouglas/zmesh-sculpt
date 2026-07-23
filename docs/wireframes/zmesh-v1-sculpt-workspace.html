@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wireframe: Sculpt Workspace — zmesh v1</title>
+<style>
+  :root {
+    --ink: #222;
+    --line: #ccc;
+    --line-strong: #999;
+    --panel: #fff;
+    --bg: #f5f5f5;
+    --muted: #777;
+    --fill: #ededed;
+    --annot: #2b6cb0;
+    --danger: #c0392b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 24px;
+    font-family: -apple-system, system-ui, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg); color: var(--ink);
+  }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  h2 { font-size: 15px; margin: 32px 0 10px; }
+  .wf-meta {
+    font-size: 12px; color: var(--muted); margin-bottom: 16px;
+    border-bottom: 1px solid var(--line); padding-bottom: 10px;
+  }
+  .wf-browser-chrome {
+    background: #e2e2e2; border: 1px solid var(--line-strong);
+    border-bottom: none; border-radius: 6px 6px 0 0;
+    padding: 8px 10px; display: flex; align-items: center; gap: 8px;
+  }
+  .wf-dot { width: 10px; height: 10px; border-radius: 50%; background: #bbb; }
+  .wf-url-bar {
+    flex: 1; background: #fff; border: 1px solid var(--line);
+    border-radius: 4px; padding: 4px 8px; font-size: 12px; color: var(--muted);
+  }
+  .wf-screen {
+    background: var(--panel); border: 1px solid var(--line-strong);
+    border-radius: 0 0 6px 6px;
+  }
+
+  /* ---- App layout ---- */
+  .app { display: flex; flex-direction: column; height: 640px; }
+
+  /* Top toolbar */
+  .topbar {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 12px; border-bottom: 1px solid var(--line);
+    background: var(--fill);
+  }
+  .topbar .spacer { flex: 1; }
+  .btn {
+    border: 1px solid var(--line-strong); background: #fff;
+    padding: 6px 10px; font-size: 12px; border-radius: 4px; cursor: default;
+    white-space: nowrap;
+  }
+  .btn.primary { border-width: 2px; border-color: #444; font-weight: 600; }
+  .btn.icon { min-width: 34px; text-align: center; }
+  .projname {
+    font-size: 13px; font-weight: 600; padding: 4px 8px;
+    border: 1px dashed var(--line-strong); border-radius: 4px; background:#fff;
+  }
+  .group { display: flex; align-items: center; gap: 6px; }
+  .divider { width: 1px; height: 26px; background: var(--line); margin: 0 4px; }
+  .field-inline { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+  .slider {
+    width: 110px; height: 6px; background: #fff; border: 1px solid var(--line-strong);
+    border-radius: 3px; position: relative;
+  }
+  .slider .knob {
+    position: absolute; top: -4px; width: 12px; height: 12px; border-radius: 50%;
+    background: #888; border: 1px solid #555;
+  }
+  .toggle {
+    display: inline-flex; align-items: center; gap: 6px; font-size: 12px;
+    border: 2px solid #444; background: #e8e8e8; padding: 5px 9px; border-radius: 4px;
+  }
+  .toggle .sw { width: 26px; height: 14px; background: #bbb; border-radius: 8px; position: relative; }
+  .toggle .sw::after { content:""; position:absolute; right:1px; top:1px; width:12px; height:12px; background:#555; border-radius:50%; }
+
+  /* Body: brush rail + viewport */
+  .body { flex: 1; display: flex; min-height: 0; }
+
+  .rail {
+    width: 132px; border-right: 1px solid var(--line);
+    background: var(--fill); padding: 10px 8px; display: flex; flex-direction: column; gap: 6px;
+    overflow: auto;
+  }
+  .rail-label { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 4px 2px; }
+  .brush {
+    display: flex; align-items: center; justify-content: space-between;
+    border: 1px solid var(--line-strong); background: #fff; border-radius: 4px;
+    padding: 7px 8px; font-size: 12px;
+  }
+  .brush.active { border-width: 2px; border-color: #333; font-weight: 600; background: #eaeaea; }
+  .brush .key { font-size: 10px; color: var(--muted); border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; }
+
+  .brush-params { margin-top: 8px; border-top: 1px dashed var(--line-strong); padding-top: 10px; display: flex; flex-direction: column; gap: 10px; }
+  .param label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+  .param .slider { width: 100%; }
+  .param .val { float: right; color: #444; }
+
+  /* Viewport */
+  .viewport {
+    flex: 1; position: relative; background:
+      repeating-linear-gradient(45deg, #efefef 0 10px, #f6f6f6 10px 20px);
+    overflow: hidden;
+  }
+  .mesh-ph {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    width: 260px; height: 260px; border-radius: 50%;
+    background: radial-gradient(circle at 38% 34%, #fff 0%, #ddd 55%, #bcbcbc 100%);
+    border: 1px solid var(--line-strong);
+  }
+  .brush-cursor {
+    position: absolute; top: 42%; left: 46%; width: 90px; height: 90px;
+    border: 2px dashed #666; border-radius: 50%; transform: translate(-50%,-50%);
+  }
+  .brush-cursor .dot { position:absolute; top:50%; left:50%; width:4px; height:4px; background:#666; border-radius:50%; transform:translate(-50%,-50%); }
+  .mirror-line {
+    position:absolute; top:0; bottom:0; left:50%; width:0; border-left: 1px dotted #999;
+  }
+  .dims-readout {
+    position: absolute; left: 12px; bottom: 12px;
+    background: rgba(255,255,255,.9); border: 1px solid var(--line-strong);
+    border-radius: 4px; padding: 6px 10px; font-size: 12px; color: #333;
+  }
+  .dims-readout b { font-weight: 600; }
+  .gizmo {
+    position: absolute; right: 12px; top: 12px; width: 54px; height: 54px;
+    border: 1px solid var(--line-strong); border-radius: 6px; background: rgba(255,255,255,.85);
+    font-size: 10px; color: var(--muted); display: flex; align-items: center; justify-content: center;
+    text-align: center;
+  }
+  .help-fab {
+    position: absolute; right: 12px; bottom: 12px;
+    width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--line-strong);
+    background: #fff; text-align: center; line-height: 28px; font-size: 14px; color: #444;
+  }
+
+  /* Input-model legend popover */
+  .legend {
+    position: absolute; right: 12px; bottom: 52px; width: 292px;
+    background: #fff; border: 1px solid var(--line-strong); border-radius: 6px;
+    padding: 10px 12px; font-size: 12px; box-shadow: 0 4px 14px rgba(0,0,0,.12);
+  }
+  .legend h4 { margin: 0 0 8px; font-size: 12px; }
+  .legend .sub { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 8px 0 3px; }
+  .legend .sub:first-of-type { margin-top: 0; }
+  .legend table { width: 100%; border-collapse: collapse; }
+  .legend td { padding: 3px 0; vertical-align: top; }
+  .legend td.k { color: #333; font-weight: 600; white-space: nowrap; padding-right: 8px; }
+  .legend td.v { color: var(--muted); }
+
+  /* callout markers */
+  .cnum {
+    display:inline-block; min-width:18px; height:18px; line-height:18px; text-align:center;
+    background: var(--annot); color:#fff; border-radius: 50%; font-size: 11px; font-weight: 700;
+    margin-right: 4px;
+  }
+  .pin {
+    position: absolute; z-index: 5;
+    background: var(--annot); color:#fff; border-radius: 50%;
+    width: 20px; height: 20px; line-height: 20px; text-align: center; font-size: 11px; font-weight: 700;
+    box-shadow: 0 1px 3px rgba(0,0,0,.3);
+  }
+
+  /* States */
+  .wf-state-label {
+    margin: 26px 0 8px; font-size: 12px; font-weight: 700; color: #444;
+    text-transform: uppercase; letter-spacing: .05em;
+  }
+  .state-frame { position: relative; }
+  .overlay-scrim {
+    position: absolute; inset: 0; background: rgba(240,240,240,.72);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .modal-lite {
+    background: #fff; border: 1px solid var(--line-strong); border-radius: 8px;
+    padding: 18px 22px; width: 300px; text-align: center; font-size: 13px;
+  }
+  .progress { height: 8px; background: #eee; border: 1px solid var(--line-strong); border-radius: 5px; margin-top: 12px; overflow: hidden; }
+  .progress .bar { height: 100%; width: 62%; background: #999; }
+  .clamp-toast {
+    position: absolute; top: 54px; left: 50%; transform: translateX(-50%);
+    background: #fff; border: 1px solid var(--line-strong); border-left: 4px solid #555;
+    border-radius: 4px; padding: 8px 12px; font-size: 12px; color: #333; width: 320px;
+  }
+
+  /* Annotations */
+  .wf-annotations {
+    background: #fff; border: 1px solid var(--line); border-radius: 6px;
+    padding: 16px 20px; margin-top: 20px;
+  }
+  .wf-annotations ol { margin: 0; padding-left: 8px; list-style: none; }
+  .wf-annotations li { margin: 0 0 10px; font-size: 13px; line-height: 1.45; }
+  .wf-annotations li:last-child { margin-bottom: 0; }
+  .checklist { font-size: 13px; line-height: 1.6; }
+  .checklist .ok { color: #2e7d32; }
+  .checklist .warn { color: var(--danger); }
+  code { background: #f0f0f0; padding: 1px 5px; border-radius: 3px; font-size: 12px; }
+</style>
+</head>
+<body>
+
+  <div class="wf-meta">
+    Screen: Sculpt Workspace &nbsp;|&nbsp; Feature: zmesh-v1 &nbsp;|&nbsp; Version: 1 &nbsp;|&nbsp; Date: 2026-07-19 &nbsp;|&nbsp;
+    Appears in flows: 1–8 (the core screen) &nbsp;|&nbsp; Fidelity: low (grayscale, structural)
+  </div>
+
+  <h1>Sculpt Workspace</h1>
+  <p style="font-size:13px;color:#555;max-width:820px;margin:4px 0 18px;">
+    The heart of zmesh. A persistent 3D viewport with a brush rail, contextual brush parameters, and a top action bar.
+    Export, detail-remesh progress, and recovery all layer <em>onto</em> this screen — the viewport is never torn down mid-session.
+    The numbered pins <span class="cnum">n</span> map to the annotations below.
+  </p>
+
+  <!-- =================== DEFAULT STATE =================== -->
+  <div class="wf-browser-chrome">
+    <span class="wf-dot"></span><span class="wf-dot"></span><span class="wf-dot"></span>
+    <div class="wf-url-bar">zmesh.app /sculpt/untitled-1</div>
+  </div>
+
+  <div class="wf-screen">
+    <div class="app">
+
+      <!-- Top toolbar -->
+      <div class="topbar">
+        <button class="btn" style="position:relative;">← Gallery
+          <span class="pin" style="left:-10px;top:-10px;">1</span>
+        </button>
+        <span class="projname">My First Figure ✎</span>
+        <div class="divider"></div>
+        <div class="group" style="position:relative;">
+          <button class="btn icon">↶</button>
+          <button class="btn icon">↷</button>
+          <span class="pin" style="right:-10px;top:-10px;">2</span>
+        </div>
+        <div class="divider"></div>
+        <div class="field-inline" style="position:relative;">
+          Detail
+          <div class="slider" title="Detail level"><span class="knob" style="left:40%"></span></div>
+          <span style="color:#444;">Med</span>
+          <span class="pin" style="right:-10px;top:-12px;">3</span>
+        </div>
+        <div class="divider"></div>
+        <span class="toggle" style="position:relative;">
+          <span class="sw"></span> Mirror&nbsp;X
+          <span class="pin" style="right:-10px;top:-12px;">4</span>
+        </span>
+        <div class="spacer"></div>
+        <button class="btn primary" style="position:relative;">Export ▸
+          <span class="pin" style="right:-10px;top:-12px;">5</span>
+        </button>
+      </div>
+
+      <!-- Body -->
+      <div class="body">
+
+        <!-- Brush rail -->
+        <div class="rail" style="position:relative;">
+          <span class="pin" style="right:6px;top:6px;">6</span>
+          <div class="rail-label">Brushes</div>
+          <div class="brush active">Draw <span class="key">1</span></div>
+          <div class="brush">Smooth <span class="key">2</span></div>
+          <div class="brush">Inflate <span class="key">3</span></div>
+          <div class="brush">Grab <span class="key">4</span></div>
+          <div class="brush">Pinch <span class="key">5</span></div>
+          <div class="brush">Crease <span class="key">6</span></div>
+          <div class="brush">Flatten <span class="key">7</span></div>
+
+          <div class="brush-params" style="position:relative;">
+            <span class="pin" style="right:-2px;top:-4px;">7</span>
+            <div class="rail-label" style="margin:0 2px 2px;">Draw settings</div>
+            <div class="param">
+              <label>Size <span class="val">32</span></label>
+              <div class="slider"><span class="knob" style="left:32%"></span></div>
+            </div>
+            <div class="param">
+              <label>Strength <span class="val">50%</span></label>
+              <div class="slider"><span class="knob" style="left:50%"></span></div>
+            </div>
+            <div style="font-size:11px;color:#777;">Hold <code>Alt</code> to invert (subtract)</div>
+          </div>
+        </div>
+
+        <!-- Viewport -->
+        <div class="viewport">
+          <div class="mirror-line"></div>
+          <div class="mesh-ph"></div>
+          <div class="brush-cursor"><span class="dot"></span></div>
+          <div class="gizmo">nav<br>cube</div>
+          <div class="dims-readout"><b>Model:</b> 42 × 58 × 42 mm &nbsp;·&nbsp; fits bed (256³)</div>
+          <div class="help-fab" title="Controls help">?</div>
+
+          <!-- Input-model legend (shown open here for review) -->
+          <div class="legend">
+            <h4>Controls <span style="float:right;color:#999;font-weight:400;">click ? to toggle</span></h4>
+            <div class="sub">Trackpad</div>
+            <table>
+              <tr><td class="k">1-finger on model</td><td class="v">Sculpt with active brush</td></tr>
+              <tr><td class="k">1-finger on empty</td><td class="v">Orbit</td></tr>
+              <tr><td class="k">2-finger drag</td><td class="v">Orbit (always works)</td></tr>
+              <tr><td class="k">Pinch</td><td class="v">Zoom</td></tr>
+              <tr><td class="k">Shift + 2-finger</td><td class="v">Pan</td></tr>
+              <tr><td class="k">Option (while sculpting)</td><td class="v">Invert brush</td></tr>
+            </table>
+            <div class="sub">Mouse</div>
+            <table>
+              <tr><td class="k">Left-drag on model</td><td class="v">Sculpt</td></tr>
+              <tr><td class="k">Left-drag on empty</td><td class="v">Orbit</td></tr>
+              <tr><td class="k">Right-drag</td><td class="v">Orbit (always works)</td></tr>
+              <tr><td class="k">Scroll</td><td class="v">Zoom</td></tr>
+              <tr><td class="k">Middle / Shift+right</td><td class="v">Pan</td></tr>
+              <tr><td class="k">Alt (while sculpting)</td><td class="v">Invert brush</td></tr>
+            </table>
+          </div>
+
+          <span class="pin" style="left:46%;top:40%;">8</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =================== STATE: REMESH IN PROGRESS =================== -->
+  <div class="wf-state-label">State: Detail change — remesh in progress (Flow 3, NFR-03)</div>
+  <div class="wf-screen state-frame" style="border-radius:6px;">
+    <div class="app" style="height:300px;">
+      <div class="topbar">
+        <button class="btn">← Gallery</button>
+        <span class="projname">My First Figure</span>
+        <div class="divider"></div>
+        <div class="field-inline">Detail <div class="slider"><span class="knob" style="left:78%"></span></div> <span>High</span></div>
+        <div class="spacer"></div>
+        <button class="btn primary">Export ▸</button>
+      </div>
+      <div class="body">
+        <div class="rail"><div class="rail-label">Brushes</div><div class="brush">Draw</div><div class="brush">Smooth</div><div class="brush">…</div></div>
+        <div class="viewport">
+          <div class="mesh-ph" style="opacity:.5;"></div>
+        </div>
+      </div>
+    </div>
+    <div class="overlay-scrim">
+      <div class="modal-lite">
+        Increasing detail…
+        <div class="progress"><div class="bar"></div></div>
+        <div style="margin-top:10px;color:#777;font-size:11px;">Viewport stays responsive · running off the UI thread</div>
+      </div>
+    </div>
+    <span class="pin" style="left:50%;top:8px;">9</span>
+  </div>
+
+  <!-- =================== STATE: DETAIL CEILING CLAMP =================== -->
+  <div class="wf-state-label">State: Detail ceiling reached (Flow 3, BR-03)</div>
+  <div class="wf-screen state-frame" style="border-radius:6px;">
+    <div class="app" style="height:150px;">
+      <div class="topbar">
+        <button class="btn">← Gallery</button>
+        <div class="divider"></div>
+        <div class="field-inline">Detail <div class="slider"><span class="knob" style="left:100%"></span></div> <span>Max</span></div>
+        <div class="spacer"></div>
+        <button class="btn primary">Export ▸</button>
+      </div>
+      <div class="body" style="position:relative;">
+        <div class="clamp-toast">
+          <b>Maximum detail reached.</b> This is the finest resolution that stays smooth to sculpt. Split the model or scale up to add more.
+        </div>
+      </div>
+    </div>
+    <span class="pin" style="left:50%;top:46px;">10</span>
+  </div>
+
+  <!-- =================== UX REVIEW CHECKLIST =================== -->
+  <h2>UX review checklist</h2>
+  <div class="checklist">
+    <div class="ok">✓ Primary action prominent — Export is the only heavy-bordered button, top-right.</div>
+    <div class="ok">✓ Hierarchy clear — pick brush (rail) → tune size/strength → sculpt in viewport → export.</div>
+    <div class="ok">✓ Alternate states shown — remesh-in-progress and detail-ceiling clamp.</div>
+    <div class="ok">✓ All controls labeled — brushes named + numbered; sliders show live values.</div>
+    <div class="ok">✓ Way back — "← Gallery" is the persistent up-navigation; autosave means it is non-destructive.</div>
+    <div class="ok">✓ Destructive vs. constructive — no destructive action lives on this screen (delete is in the gallery).</div>
+    <div class="warn">△ Empty state N/A — the workspace always has a mesh (opens on a sphere); there is no empty viewport by design (FR-01).</div>
+    <div class="warn">△ Discoverability risk — camera-vs-brush model must be teachable; mitigated by the always-available "?" legend (see annotation 8). Confirm during usability.</div>
+  </div>
+
+  <!-- =================== ANNOTATIONS =================== -->
+  <div class="wf-annotations">
+    <h2 style="margin-top:0;">Annotations</h2>
+    <ol>
+      <li><span class="cnum">1</span><strong>Back to Gallery</strong> — persistent up-navigation. Safe to click any time; the session is autosaved to IndexedDB (FR-13), so no "unsaved changes" nag is needed for the autosave copy. (A separate prompt still applies to the explicit on-disk <code>.zmesh</code> if desired.)</li>
+      <li><span class="cnum">2</span><strong>Undo / Redo</strong> — ≥50 steps per session (FR-07). Every brush stroke <em>and</em> every remesh is one atomic step. Shortcuts: <code>Cmd/Ctrl+Z</code> / <code>Shift+Cmd/Ctrl+Z</code>.</li>
+      <li><span class="cnum">3</span><strong>Detail slider</strong> — the single "how fine" control (FR-08). Discrete labelled stops (Low / Med / High / Max) rather than raw triangle counts — beginners think in "smoothness," not topology. Changing it triggers the remesh in state 2.</li>
+      <li><span class="cnum">4</span><strong>Mirror X toggle</strong> — <strong>ON by default</strong> (FR-06), shown active. The dotted vertical line in the viewport is the mirror plane. Prominent because symmetry is the biggest quality win for figurines/faces.</li>
+      <li><span class="cnum">5</span><strong>Export</strong> — the primary action and the product's core promise. Opens the Export panel (separate wireframe) where scale/bed/format/validation live.</li>
+      <li><span class="cnum">6</span><strong>Brush rail</strong> — all seven brushes visible at once (FR-03), no nested menus. Number-key shortcuts <code>1–7</code>. Active brush is heavier-bordered + filled.</li>
+      <li><span class="cnum">7</span><strong>Contextual brush parameters</strong> — Size + Strength for the active brush (FR-05), with the invert-modifier hint inline (FR-04). Panel header names the active brush so the context is unambiguous.</li>
+      <li><span class="cnum">8</span><strong>Camera-vs-brush input model (THE key decision — settled).</strong> One unifying rule per device: <strong>act on the model with the "primary" input, move the camera with the "secondary" one.</strong> Surfaced via the always-available "?" legend.
+        <div style="margin-top:6px;padding-left:8px;color:#444;">
+          <strong>Trackpad (primary target — MacBook):</strong> the rule is <em>one finger = sculpt/act, two fingers = camera</em>.<br>
+          • 1-finger drag on the model → sculpt · on empty → orbit<br>
+          • <strong>2-finger drag → orbit (always works)</strong>, even when the model fills the viewport<br>
+          • Pinch → zoom · Shift+2-finger → pan · Option → invert brush<br>
+          <span style="display:block;margin-top:6px;"><strong>Mouse:</strong> left-drag on model → sculpt · left-drag on empty → orbit · right-drag → orbit anywhere · scroll → zoom · middle/Shift+right → pan · Alt → invert.</span>
+        </div>
+        This mirrors the Nomad Sculpt (iPad) convention, is fully one-handed on a laptop trackpad, and needs no right-button or middle-button. The "always works" secondary-orbit (2-finger / right-drag) is the escape hatch for re-framing when zoomed in — it replaces the earlier Hold-Space idea, now dropped. The dashed circular brush cursor only appears when hovering the model, giving a constant "sculpt-mode-here" cue.
+      </li>
+      <li><span class="cnum">9</span><strong>Remesh progress overlay</strong> — detail changes run in a Web Worker (NFR-03, ≤3 s at max); a lightweight non-blocking overlay communicates work without freezing the app. Undoable when done.</li>
+      <li><span class="cnum">10</span><strong>Detail ceiling clamp</strong> — the slider physically stops at Max (BR-03, budget set by the Q-01 60 fps benchmark). Plain-language toast explains why and offers alternatives; it is never framed as an error.</li>
+    </ol>
+  </div>
+
+  <p style="font-size:12px;color:#888;margin-top:18px;">
+    Low-fidelity wireframe — grayscale and structural only. Icons are placeholder text labels; final iconography, exact spacing, and theming are out of scope here.
+  </p>
+
+</body>
+</html>
