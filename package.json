@@ -1,0 +1,22 @@
+{
+  "name": "zmesh",
+  "version": "0.0.1",
+  "description": "Browser-based, beginner-first 3D sculpting for 3D printing — sculpt organic shapes, export watertight STL/3MF.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "eslint": "^9.30.0",
+    "prettier": "^3.6.0",
+    "typescript": "^5.8.0",
+    "typescript-eslint": "^8.35.0",
+    "vitest": "^3.2.0"
+  }
+}
