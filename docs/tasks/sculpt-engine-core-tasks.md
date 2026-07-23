@@ -48,7 +48,8 @@ The `SculptMesh` typed-array structure (`positions`/`indices`/`normals`, counts,
 
 ## Task: 03 — Primitive generators (sphere first; egg, block, capsule)
 
-**Layer**: Core · **Estimate**: 2hr · **Depends on**: 02 · **Status**: PENDING
+**Layer**: Core · **Estimate**: 2hr · **Depends on**: 02 · **Status**: DONE
+**Completed**: 2026-07-23
 
 ### What to build
 Generators producing closed, manifold, watertight `SculptMesh` primitives centered at origin in mm. Sphere required (first-run default); egg/block/capsule for FR-22. Reasonable default resolution (~Med).
