@@ -250,7 +250,8 @@ Apply each stamp additionally mirrored across x=0 to the geometrically mirrored 
 
 ## Task: 14 — Undo/redo history (delta + snapshot)
 
-**Layer**: Engine · **Estimate**: 3hr · **Depends on**: 12 · **Status**: PENDING
+**Layer**: Engine · **Estimate**: 3hr · **Depends on**: 12 · **Status**: DONE
+**Completed**: 2026-07-23
 
 ### What to build
 `engine/history.ts`: per-stroke entries store touched-vertex indices + before/after buffers; commit one entry per `endStroke`. Linear history (new stroke truncates redo), memory-bounded with oldest-first eviction never below 50 steps. (Remesh snapshot entries wired in Task 16.)
