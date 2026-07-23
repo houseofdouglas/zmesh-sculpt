@@ -66,7 +66,8 @@ Generators producing closed, manifold, watertight `SculptMesh` primitives center
 
 ## Task: 04 — Manifold / watertight validator
 
-**Layer**: Core · **Estimate**: 2hr · **Depends on**: 02 · **Status**: PENDING
+**Layer**: Core · **Estimate**: 2hr · **Depends on**: 02 · **Status**: DONE
+**Completed**: 2026-07-23
 
 ### What to build
 `validate/manifold.ts` — checks a mesh is manifold (each edge shared by exactly two triangles, consistent winding) and watertight (no boundary edges). Returns a structured result (ok + list of defects). Reused later by export and remesh boundaries.
