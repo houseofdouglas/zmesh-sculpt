@@ -269,7 +269,8 @@ Apply each stamp additionally mirrored across x=0 to the geometrically mirrored 
 
 ## Task: 15 — `SculptEngine` facade + change notification
 
-**Layer**: Engine · **Estimate**: 3hr · **Depends on**: 10, 11, 13, 14 · **Status**: PENDING
+**Layer**: Engine · **Estimate**: 3hr · **Depends on**: 10, 11, 13, 14 · **Status**: DONE
+**Completed**: 2026-07-23
 
 ### What to build
 The `SculptEngine` class implementing the spec's API: mesh lifecycle, brush config (type/size/strength/invert/symmetry), stroke lifecycle wiring stamps→brushes→normals→history, and `onChange(region)` dirty-region emission. The single object downstream layers talk to.
