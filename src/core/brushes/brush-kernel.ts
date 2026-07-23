@@ -49,3 +49,37 @@ export function clampDisplacement(value: number): number {
   if (value > MAX_STAMP_DISPLACEMENT_MM) return MAX_STAMP_DISPLACEMENT_MM;
   return value;
 }
+
+/**
+ * Clamps a signed blend factor to [-1, 1]. Used by brushes whose "step" is
+ * a fraction of an existing offset (contract/expand toward a point or
+ * plane) rather than a fixed mm displacement along a known direction —
+ * Draw/Inflate use `clampDisplacement` instead, since their displacement
+ * is a scalar along one known unit direction.
+ */
+export function clampBlendSigned(value: number): number {
+  if (value < -1) return -1;
+  if (value > 1) return 1;
+  return value;
+}
+
+/**
+ * Clamps a displacement *vector*'s magnitude to MAX_STAMP_DISPLACEMENT_MM,
+ * preserving its direction. For brushes whose displacement isn't along a
+ * single known axis (Pinch/Crease move within an arbitrary tangent-plane
+ * direction; Flatten moves along a computed plane normal), so a per-axis
+ * scalar clamp would distort direction instead of just limiting magnitude.
+ */
+export function clampVectorMagnitude(
+  x: number,
+  y: number,
+  z: number,
+  maxMagnitude: number,
+): readonly [number, number, number] {
+  const magnitude = Math.sqrt(x * x + y * y + z * z);
+  if (magnitude <= maxMagnitude || magnitude === 0) {
+    return [x, y, z];
+  }
+  const scale = maxMagnitude / magnitude;
+  return [x * scale, y * scale, z * scale];
+}

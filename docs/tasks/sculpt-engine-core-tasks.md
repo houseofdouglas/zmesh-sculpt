@@ -196,7 +196,8 @@ Two behaviors following the Task 08 template: Smooth (Laplacian toward one-ring 
 
 ## Task: 11 — Brushes part 2: Pinch + Crease + Flatten + registry
 
-**Layer**: Core · **Estimate**: 2hr · **Depends on**: 08 · **Status**: PENDING
+**Layer**: Core · **Estimate**: 2hr · **Depends on**: 08 · **Status**: DONE
+**Completed**: 2026-07-23
 
 ### What to build
 The tangent-plane / planar behaviors: Pinch (toward center in tangent plane), Crease (pinch + inward normal), Flatten (toward the affected region's averaged plane). Assemble the stamp-brush registry (`brushes/index.ts`) covering all six stamp brushes (Grab is stroke-stateful, handled in Task 12).
