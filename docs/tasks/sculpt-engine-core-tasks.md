@@ -11,7 +11,8 @@ Layers per constitution: `types → core → engine`. No Infra/API/UI tasks here
 
 ## Task: 01 — Project scaffold (Vite + React + TS strict + Vitest)
 
-**Layer**: Config · **Estimate**: 1hr · **Depends on**: none · **Status**: PENDING
+**Layer**: Config · **Estimate**: 1hr · **Depends on**: none · **Status**: DONE
+**Completed**: 2026-07-23
 
 ### What to build
 Initialize the actual Vite + React 19 + TypeScript project over the existing stub `package.json`/`tsconfig.json`. Wire up ESLint (typescript-eslint), Prettier, and Vitest with `test`/`typecheck`/`lint` scripts matching the constitution. Add a minimal app entry so `npm run dev` boots (blank canvas placeholder is fine). Establish `src/core`, `src/engine`, `src/types` folders.
