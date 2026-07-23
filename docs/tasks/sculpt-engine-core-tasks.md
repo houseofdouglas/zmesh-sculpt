@@ -140,7 +140,8 @@ Uniform-grid spatial hash over vertex positions supporting "all vertices within 
 
 ## Task: 08 — Falloff + Draw brush kernel (the template brush)
 
-**Layer**: Core · **Estimate**: 2hr · **Depends on**: 06, 07 · **Status**: PENDING
+**Layer**: Core · **Estimate**: 2hr · **Depends on**: 06, 07 · **Status**: DONE
+**Completed**: 2026-07-23
 
 ### What to build
 `brushes/falloff.ts` (smoothstep) and the first brush, `brushes/draw.ts`, as a pure function `(positions, normals, affectedIndices, stamp) → mutates positions`. Establishes the brush-kernel signature all others follow. Includes the per-stamp safety cap and the affected-region normal-recompute helper.
