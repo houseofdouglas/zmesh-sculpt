@@ -122,7 +122,8 @@ Build per-vertex one-ring neighbor lists in CSR form (offset + flat index arrays
 
 ## Task: 07 — Spatial hash for radius queries
 
-**Layer**: Core · **Estimate**: 2hr · **Depends on**: 02 · **Status**: PENDING
+**Layer**: Core · **Estimate**: 2hr · **Depends on**: 02 · **Status**: DONE
+**Completed**: 2026-07-23
 
 ### What to build
 Uniform-grid spatial hash over vertex positions supporting "all vertices within radius r of point p". Rebuildable on topology change; refreshable after strokes. The query every stamping brush uses.
