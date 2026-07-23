@@ -29,7 +29,8 @@ Initialize the actual Vite + React 19 + TypeScript project over the existing stu
 
 ## Task: 02 — `SculptMesh` type + construction + normals + AABB
 
-**Layer**: Core · **Estimate**: 2hr · **Depends on**: 01 · **Status**: PENDING
+**Layer**: Core · **Estimate**: 2hr · **Depends on**: 01 · **Status**: DONE
+**Completed**: 2026-07-23
 
 ### What to build
 The `SculptMesh` typed-array structure (`positions`/`indices`/`normals`, counts, `bounds`) with a constructor that validates array lengths, computes per-vertex normals from face normals, and computes the AABB. Pure, framework-free.

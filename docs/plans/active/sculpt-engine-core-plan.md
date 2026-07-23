@@ -8,7 +8,7 @@ Tasks: docs/tasks/sculpt-engine-core-tasks.md
 
 ## Progress
 - [x] 01 — Project scaffold (Vite + React + TS strict + Vitest)
-- [ ] 02 — SculptMesh type + construction + normals + AABB
+- [x] 02 — SculptMesh type + construction + normals + AABB
 - [ ] 03 — Primitive generators (sphere first)
 - [ ] 04 — Manifold / watertight validator
 - [ ] 05 — manifold-3d LevelSet round-trip spike (library de-risk)
@@ -28,6 +28,7 @@ Tasks: docs/tasks/sculpt-engine-core-tasks.md
 - Task 01: pinned `vite@7` + `@vitejs/plugin-react@4.7.0` (not latest `vite@8`/`plugin-react@6`) — vitest@3.2's peer range caps at vite ^7, and plugin-react@6 requires vite ^8. Revisit when vitest publishes a vite-8-compatible major.
 - Task 01: added `vitest.test.passWithNoTests: true` so `npm run test` exits 0 on an empty suite (Vitest's default is exit 1 with zero test files).
 - Task 01: React 19 needs `import type { JSX } from 'react'` for component return types — the global `JSX` namespace isn't ambient the way older React types provided.
+- Task 02: `noUncheckedIndexedAccess` makes `typedArray[i] += x` a type error (the read side is `number | undefined`). Hot-loop accumulation uses documented non-null assertions (`arr[i]!`) instead of per-element branches, since the offsets are provably in-bounds. Test fixture is a regular tetrahedron centered at the origin — by symmetry each vertex's normal exactly equals its normalized position, giving a precise (not just sign-check) outward-normal assertion.
 - Q-01 (triangle budget → Max detail) is resolved by Task 09; provisional Max ≈ 500k until measured.
 - manifold-3d de-risked early in Task 05 before committing to it in Task 16 (revisit ADR if the spike fails).
 - Brush work split: Draw (08, template) → Smooth+Inflate (10) → Pinch+Crease+Flatten+registry (11); Grab is stroke-stateful (12).
