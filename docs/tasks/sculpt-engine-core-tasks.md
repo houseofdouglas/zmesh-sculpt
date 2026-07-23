@@ -84,7 +84,9 @@ Generators producing closed, manifold, watertight `SculptMesh` primitives center
 
 ## Task: 05 — `manifold-3d` LevelSet round-trip spike (library de-risk)
 
-**Layer**: Core/Spike · **Estimate**: 2hr · **Depends on**: 03, 04 · **Status**: PENDING
+**Layer**: Core/Spike · **Estimate**: 2hr · **Depends on**: 03, 04 · **Status**: DONE
+**Completed**: 2026-07-23
+**Note**: spike found `levelSet` is the wrong API for this use case; `ofMesh`/`refineToLength`/`simplify`/`getMesh` is the correct fit and is what was actually proven. See the ADR (`docs/adr/2026-07-19-voxel-remesh-library.md`) for the full writeup.
 
 ### What to build
 Install `manifold-3d` and prove the remesh primitive works before committing to it. Convert a `SculptMesh` sphere → an SDF/level-set input → run manifold's `LevelSet` at a target resolution → convert back to `SculptMesh`. Validate the result with Task 04. Measure WASM init time and bundle footprint. Capture findings; if it fails (non-manifold output, unacceptable size, awkward API), flag to revisit the library choice (ADR) before Task 16.
