@@ -232,7 +232,8 @@ The tangent-plane / planar behaviors: Pinch (toward center in tangent plane), Cr
 
 ## Task: 13 — X-mirror symmetry
 
-**Layer**: Engine · **Estimate**: 2hr · **Depends on**: 12 · **Status**: PENDING
+**Layer**: Engine · **Estimate**: 2hr · **Depends on**: 12 · **Status**: DONE
+**Completed**: 2026-07-23
 
 ### What to build
 Apply each stamp additionally mirrored across x=0 to the geometrically mirrored vertices. Establish (once per topology) a mirror-vertex mapping or a mirror-the-stamp-and-requery strategy. Default ON.
