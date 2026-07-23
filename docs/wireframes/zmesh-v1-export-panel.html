@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wireframe: Export Panel — zmesh v1</title>
+<style>
+  :root{--ink:#222;--line:#ccc;--line-strong:#999;--panel:#fff;--bg:#f5f5f5;--muted:#777;--fill:#ededed;--annot:#2b6cb0;--danger:#c0392b;--ok:#2e7d32;}
+  *{box-sizing:border-box;}
+  body{margin:0;padding:24px;font-family:-apple-system,system-ui,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);}
+  h1{font-size:18px;margin:0 0 4px;} h2{font-size:15px;margin:32px 0 10px;}
+  .wf-meta{font-size:12px;color:var(--muted);margin-bottom:16px;border-bottom:1px solid var(--line);padding-bottom:10px;}
+  .lead{font-size:13px;color:#555;max-width:820px;margin:4px 0 18px;}
+  .row{display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start;}
+  .state-label{margin:26px 0 8px;font-size:12px;font-weight:700;color:#444;text-transform:uppercase;letter-spacing:.05em;}
+
+  /* workspace backdrop (dimmed) */
+  .stage{position:relative;width:520px;height:440px;border:1px solid var(--line-strong);border-radius:8px;overflow:hidden;background:repeating-linear-gradient(45deg,#efefef 0 10px,#f6f6f6 10px 20px);}
+  .stage .scrim{position:absolute;inset:0;background:rgba(235,235,235,.6);}
+  .stage .mini-top{position:absolute;top:0;left:0;right:0;height:34px;background:var(--fill);border-bottom:1px solid var(--line);display:flex;align-items:center;padding:0 10px;font-size:11px;color:var(--muted);gap:8px;}
+
+  /* export panel = right-docked sheet */
+  .panel{position:absolute;top:0;right:0;bottom:0;width:290px;background:#fff;border-left:1px solid var(--line-strong);box-shadow:-6px 0 18px rgba(0,0,0,.08);display:flex;flex-direction:column;}
+  .panel-hd{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--line);}
+  .panel-hd h3{margin:0;font-size:14px;}
+  .x{border:1px solid var(--line-strong);background:#fff;border-radius:4px;width:24px;height:24px;font-size:13px;color:#555;}
+  .panel-bd{padding:14px;overflow:auto;flex:1;font-size:12px;}
+  .panel-ft{padding:12px 14px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:8px;}
+
+  .fld{margin-bottom:14px;}
+  .fld > label{display:block;font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;}
+  .dims{display:flex;gap:8px;}
+  .dims .d{flex:1;border:1px solid var(--line-strong);border-radius:4px;padding:6px;text-align:center;background:#fafafa;}
+  .dims .d b{display:block;font-size:13px;} .dims .d span{font-size:10px;color:var(--muted);}
+  .scalebar{display:flex;align-items:center;gap:8px;}
+  .slider{flex:1;height:6px;background:#fff;border:1px solid var(--line-strong);border-radius:3px;position:relative;}
+  .slider .knob{position:absolute;top:-4px;left:52%;width:12px;height:12px;border-radius:50%;background:#888;border:1px solid #555;}
+  .num{width:64px;border:1px solid var(--line-strong);border-radius:4px;padding:5px 6px;font-size:12px;background:#fff;}
+  .seg{display:flex;border:1px solid var(--line-strong);border-radius:4px;overflow:hidden;width:fit-content;}
+  .seg button{border:none;background:#fff;padding:6px 14px;font-size:12px;border-right:1px solid var(--line);}
+  .seg button.on{background:#333;color:#fff;font-weight:600;}
+  .seg button:last-child{border-right:none;}
+  .sel{width:100%;border:1px solid var(--line-strong);border-radius:4px;padding:6px 8px;font-size:12px;background:#fff;}
+  .btn{border:1px solid var(--line-strong);background:#fff;padding:9px 10px;font-size:13px;border-radius:5px;text-align:center;}
+  .btn.primary{border:2px solid #333;font-weight:700;}
+  .btn.block{width:100%;}
+  .muted{color:var(--muted);} .tiny{font-size:11px;}
+
+  /* bed preview */
+  .bed{margin-top:6px;height:110px;border:1px solid var(--line-strong);border-radius:6px;position:relative;background:#fafafa;overflow:hidden;}
+  .bed .plate{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);width:180px;height:70px;background:repeating-linear-gradient(90deg,#eaeaea 0 14px,#f3f3f3 14px 28px);border:1px solid var(--line-strong);border-radius:2px;}
+  .bed .obj{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);width:60px;height:60px;border-radius:50%;background:radial-gradient(circle at 40% 34%,#fff,#cfcfcf);border:1px solid var(--line-strong);}
+  .bed.over .obj{width:120px;height:82px;bottom:20px;border-color:var(--danger);}
+  .bed .cap{position:absolute;top:6px;left:8px;font-size:10px;color:var(--muted);}
+
+  .banner{border-radius:5px;padding:9px 10px;font-size:12px;margin-bottom:12px;border:1px solid var(--line-strong);border-left-width:4px;background:#fafafa;}
+  .banner.warn{border-left-color:var(--danger);}
+  .banner.ok{border-left-color:var(--ok);}
+  .banner.info{border-left-color:#555;}
+
+  .spinner{display:inline-block;width:14px;height:14px;border:2px solid #ccc;border-top-color:#555;border-radius:50%;vertical-align:-2px;margin-right:6px;}
+  .steps{list-style:none;padding:0;margin:8px 0 0;font-size:12px;}
+  .steps li{padding:4px 0;color:var(--muted);}
+  .steps li.done{color:var(--ok);} .steps li.active{color:#222;font-weight:600;}
+
+  .pin{position:absolute;z-index:5;background:var(--annot);color:#fff;border-radius:50%;width:20px;height:20px;line-height:20px;text-align:center;font-size:11px;font-weight:700;box-shadow:0 1px 3px rgba(0,0,0,.3);}
+  .cnum{display:inline-block;min-width:18px;height:18px;line-height:18px;text-align:center;background:var(--annot);color:#fff;border-radius:50%;font-size:11px;font-weight:700;margin-right:4px;}
+
+  .wf-annotations{background:#fff;border:1px solid var(--line);border-radius:6px;padding:16px 20px;margin-top:20px;}
+  .wf-annotations ol{margin:0;padding-left:8px;list-style:none;} .wf-annotations li{margin:0 0 10px;font-size:13px;line-height:1.45;}
+  .checklist{font-size:13px;line-height:1.7;} .checklist .ok{color:var(--ok);} .checklist .warn{color:var(--danger);}
+  code{background:#f0f0f0;padding:1px 5px;border-radius:3px;font-size:12px;}
+</style>
+</head>
+<body>
+
+  <div class="wf-meta">Screen: Export Panel &nbsp;|&nbsp; Feature: zmesh-v1 &nbsp;|&nbsp; Version: 1 &nbsp;|&nbsp; Date: 2026-07-19 &nbsp;|&nbsp; Flow 4 &nbsp;|&nbsp; Fidelity: low</div>
+
+  <h1>Export Panel</h1>
+  <p class="lead">A right-docked sheet over the (dimmed but still-present) workspace — the viewport is never torn down. This is where the product's core promise is enforced: set real-world size and printer bed, pick a format, and pass through the <strong>validate → repair → refuse</strong> gate so no broken file is ever written. Pins map to annotations below.</p>
+
+  <!-- ============ DEFAULT ============ -->
+  <div class="state-label">State: Default — configure &amp; export</div>
+  <div class="stage">
+    <div class="mini-top">← Gallery&nbsp;&nbsp;·&nbsp;&nbsp;My First Figure&nbsp;&nbsp;·&nbsp;&nbsp;Detail: Med</div>
+    <div class="scrim"></div>
+    <div class="panel">
+      <div class="panel-hd"><h3>Export for printing</h3><button class="x">✕</button></div>
+      <div class="panel-bd">
+
+        <div class="fld" style="position:relative;">
+          <span class="pin" style="right:-4px;top:-6px;">1</span>
+          <label>Model size</label>
+          <div class="dims">
+            <div class="d"><b>42</b><span>X mm</span></div>
+            <div class="d"><b>58</b><span>Y mm</span></div>
+            <div class="d"><b>42</b><span>Z mm</span></div>
+          </div>
+        </div>
+
+        <div class="fld" style="position:relative;">
+          <span class="pin" style="right:-4px;top:-6px;">2</span>
+          <label>Scale (uniform)</label>
+          <div class="scalebar">
+            <div class="slider"><span class="knob"></span></div>
+            <input class="num" value="100 %">
+          </div>
+          <div class="tiny muted" style="margin-top:5px;">Longest side 58 mm · locks aspect ratio</div>
+        </div>
+
+        <div class="fld" style="position:relative;">
+          <span class="pin" style="right:-4px;top:-6px;">3</span>
+          <label>Printer bed</label>
+          <select class="sel"><option>Bambu A1 / P1 — 256 × 256 × 256</option><option>Prusa MK4 — 250 × 210 × 220</option><option>Ender 3 — 220 × 220 × 250</option><option>Custom…</option></select>
+          <div class="bed"><span class="cap">top-down · fits</span><div class="plate"></div><div class="obj"></div></div>
+        </div>
+
+        <div class="fld" style="position:relative;">
+          <span class="pin" style="right:-4px;top:-6px;">4</span>
+          <label>Format</label>
+          <div class="seg"><button class="on">STL</button><button>3MF</button></div>
+          <div class="tiny muted" style="margin-top:5px;">STL = universal. 3MF embeds real mm units (newer slicers).</div>
+        </div>
+
+      </div>
+      <div class="panel-ft" style="position:relative;">
+        <span class="pin" style="left:-4px;top:-10px;">5</span>
+        <button class="btn primary block">Validate &amp; Export</button>
+        <div class="tiny muted" style="text-align:center;">Checks the mesh is watertight before saving</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ OVERSIZED WARNING ============ -->
+  <div class="state-label">State: Larger than bed — warning, not a block (FR-11)</div>
+  <div class="stage" style="height:300px;">
+    <div class="scrim"></div>
+    <div class="panel">
+      <div class="panel-hd"><h3>Export for printing</h3><button class="x">✕</button></div>
+      <div class="panel-bd" style="position:relative;">
+        <span class="pin" style="right:-4px;top:-6px;">6</span>
+        <div class="banner warn"><strong>Bigger than the bed.</strong> 84 × 116 mm exceeds the Ender 3's 220 mm bed on the Y axis. You can still export and print in parts or on a larger printer.</div>
+        <div class="fld"><label>Printer bed</label>
+          <select class="sel"><option>Ender 3 — 220 × 220 × 250</option></select>
+          <div class="bed over"><span class="cap" style="color:var(--danger);">top-down · overhangs plate</span><div class="plate"></div><div class="obj"></div></div>
+        </div>
+      </div>
+      <div class="panel-ft"><button class="btn primary block">Validate &amp; Export anyway</button></div>
+    </div>
+  </div>
+
+  <!-- ============ VALIDATING / REPAIRING ============ -->
+  <div class="row">
+    <div>
+      <div class="state-label">State: Validating → repairing (BR-02)</div>
+      <div class="stage" style="width:300px;height:300px;">
+        <div class="panel" style="width:300px;position:static;height:100%;box-shadow:none;border-left:none;">
+          <div class="panel-hd"><h3>Exporting…</h3></div>
+          <div class="panel-bd" style="position:relative;">
+            <span class="pin" style="right:-4px;top:-6px;">7</span>
+            <div class="banner info"><span class="spinner"></span>Making sure this will print…</div>
+            <ul class="steps">
+              <li class="done">✓ Mesh closed &amp; single-shell</li>
+              <li class="active">◐ Checking for non-manifold edges…</li>
+              <li>· Auto-repair if needed</li>
+              <li>· Write STL</li>
+            </ul>
+            <div class="tiny muted" style="margin-top:12px;">Runs in a Web Worker — the app stays responsive.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ SUCCESS ============ -->
+    <div>
+      <div class="state-label">State: Success</div>
+      <div class="stage" style="width:300px;height:300px;">
+        <div class="panel" style="width:300px;position:static;height:100%;box-shadow:none;border-left:none;">
+          <div class="panel-hd"><h3>Exported</h3><button class="x">✕</button></div>
+          <div class="panel-bd" style="position:relative;">
+            <span class="pin" style="right:-4px;top:-6px;">8</span>
+            <div class="banner ok"><strong>✓ Watertight — ready to slice.</strong></div>
+            <div class="tiny" style="margin:6px 0 2px;"><b>my-first-figure.stl</b></div>
+            <div class="tiny muted">1.2 MB · 84,320 triangles · 42 × 58 × 42 mm</div>
+            <div class="tiny muted" style="margin-top:10px;">Auto-repaired: closed 2 stray edges.</div>
+          </div>
+          <div class="panel-ft"><button class="btn primary block">Save file</button><button class="btn block">Export again</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ REFUSED ============ -->
+    <div>
+      <div class="state-label">State: Refused (cannot guarantee)</div>
+      <div class="stage" style="width:300px;height:300px;">
+        <div class="panel" style="width:300px;position:static;height:100%;box-shadow:none;border-left:none;">
+          <div class="panel-hd"><h3>Couldn't make it printable</h3><button class="x">✕</button></div>
+          <div class="panel-bd" style="position:relative;">
+            <span class="pin" style="right:-4px;top:-6px;">9</span>
+            <div class="banner warn"><strong>This model isn't watertight yet.</strong> zmesh won't export a file that would fail in your slicer.</div>
+            <div class="tiny" style="margin-bottom:4px;">What usually fixes it:</div>
+            <ul class="tiny muted" style="margin:0;padding-left:16px;line-height:1.6;">
+              <li>Smooth over the thin/pinched area highlighted in the viewport</li>
+              <li>Nudge Detail up one step and retry</li>
+            </ul>
+          </div>
+          <div class="panel-ft"><button class="btn primary block">Back to sculpting</button><button class="btn block">Try export again</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ CHECKLIST ============ -->
+  <h2>UX review checklist</h2>
+  <div class="checklist">
+    <div class="ok">✓ Primary action prominent — "Validate &amp; Export" is the only heavy button.</div>
+    <div class="ok">✓ Hierarchy — size → scale → bed → format → export, top to bottom.</div>
+    <div class="ok">✓ States shown — default, oversized-warning, validating/repairing, success, refused.</div>
+    <div class="ok">✓ Cancel / back — panel close (✕) everywhere; refused state routes back to sculpting.</div>
+    <div class="ok">✓ Destructive vs constructive — none destructive here; refusal is protective, framed helpfully not as an error.</div>
+    <div class="warn">△ Oversized is deliberately non-blocking (confirmed with owner) — copy must make "export anyway" feel intentional, not like ignoring a problem.</div>
+  </div>
+
+  <!-- ============ ANNOTATIONS ============ -->
+  <div class="wf-annotations">
+    <h2 style="margin-top:0;">Annotations</h2>
+    <ol>
+      <li><span class="cnum">1</span><strong>Live dimensions in mm</strong> (FR-10, BR-01) — always visible, updates with scale. This is also shown in the workspace status bar; the panel repeats it because size is the decision being made here.</li>
+      <li><span class="cnum">2</span><strong>Uniform scale</strong> — one control, aspect-locked (a beginner scaling a figurine wants "bigger/smaller," not per-axis distortion). Slider + exact numeric entry; showing the resulting longest-side mm makes it concrete.</li>
+      <li><span class="cnum">3</span><strong>Printer bed context</strong> (FR-11) — presets for common hobby printers + Custom. The top-down preview shows the model footprint against the plate so scale is judged at a glance.</li>
+      <li><span class="cnum">4</span><strong>Format</strong> — STL default (MUST); 3MF second (SHOULD, FR-20). If 3MF is cut from a build, this control collapses to STL-only with no empty affordance.</li>
+      <li><span class="cnum">5</span><strong>"Validate &amp; Export"</strong> — the label names the guarantee. Validation always precedes writing; the button is the gate, not a plain "save."</li>
+      <li><span class="cnum">6</span><strong>Oversized-for-bed = warning</strong> (owner-confirmed) — never blocks. Copy acknowledges legitimate reasons (print in parts, bigger printer) and the CTA becomes "Export anyway" so the choice is explicit.</li>
+      <li><span class="cnum">7</span><strong>Validate → repair pipeline</strong> (BR-02, NFR-06) — visible, plain-language steps run in a Web Worker (NFR-03) so the UI never freezes. Auto-repair is attempted silently and reported after the fact.</li>
+      <li><span class="cnum">8</span><strong>Success</strong> — confirms watertight, names the file, reports what was auto-repaired (trust through transparency), then offers Save (native handle or download per Flow 6).</li>
+      <li><span class="cnum">9</span><strong>Refused</strong> (the core promise made visible) — when repair can't guarantee watertightness, zmesh refuses and explains in plain language, pointing at the problem area in the viewport and offering concrete fixes. Never a stack trace, never a silently-broken file.</li>
+    </ol>
+  </div>
+
+  <p class="tiny muted" style="margin-top:18px;">Low-fidelity — grayscale, structural. Bed presets/spec values are illustrative; final printer list TBD.</p>
+</body>
+</html>
