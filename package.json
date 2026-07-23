@@ -1,6 +1,6 @@
 {
   "name": "zmesh",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Browser-based, beginner-first 3D sculpting for 3D printing — sculpt organic shapes, export watertight STL/3MF.",
   "private": true,
   "type": "module",
