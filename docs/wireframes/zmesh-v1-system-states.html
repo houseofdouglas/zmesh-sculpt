@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wireframe: System States — zmesh v1</title>
+<style>
+  :root{--ink:#222;--line:#ccc;--line-strong:#999;--panel:#fff;--bg:#f5f5f5;--muted:#777;--fill:#ededed;--annot:#2b6cb0;--danger:#c0392b;--ok:#2e7d32;}
+  *{box-sizing:border-box;}
+  body{margin:0;padding:24px;font-family:-apple-system,system-ui,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);}
+  h1{font-size:18px;margin:0 0 4px;} h2{font-size:15px;margin:32px 0 10px;}
+  .wf-meta{font-size:12px;color:var(--muted);margin-bottom:16px;border-bottom:1px solid var(--line);padding-bottom:10px;}
+  .lead{font-size:13px;color:#555;max-width:820px;margin:4px 0 18px;}
+  .state-label{margin:26px 0 8px;font-size:12px;font-weight:700;color:#444;text-transform:uppercase;letter-spacing:.05em;}
+  .row{display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start;}
+  .frame{border:1px solid var(--line-strong);border-radius:8px;overflow:hidden;background:#fff;position:relative;}
+  .stage{position:relative;background:repeating-linear-gradient(45deg,#efefef 0 10px,#f6f6f6 10px 20px);}
+  .apphd{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--line);background:var(--fill);font-size:12px;color:var(--muted);}
+  .logo{font-weight:800;font-size:14px;color:#222;}
+  .scrim{position:absolute;inset:0;background:rgba(60,60,60,.28);display:flex;align-items:center;justify-content:center;}
+  .card{background:#fff;border:1px solid var(--line-strong);border-radius:10px;padding:20px 22px;box-shadow:0 10px 30px rgba(0,0,0,.18);}
+  .card h3{margin:0 0 10px;font-size:15px;}
+  .card p{font-size:13px;color:#444;line-height:1.5;margin:0 0 12px;}
+  .btn{border:1px solid var(--line-strong);background:#fff;padding:8px 12px;font-size:13px;border-radius:5px;}
+  .btn.primary{border:2px solid #333;font-weight:700;} .btn.danger{border-color:var(--danger);color:var(--danger);}
+  .acts{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;}
+  .icon{font-size:26px;line-height:1;margin-bottom:8px;display:block;}
+  .tiny{font-size:11px;} .muted{color:var(--muted);}
+  .toast{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);background:#fff;border:1px solid var(--line-strong);border-left:4px solid var(--danger);border-radius:6px;padding:10px 14px;font-size:12px;width:360px;box-shadow:0 6px 18px rgba(0,0,0,.14);}
+  .thumb-preview{width:88px;height:66px;border:1px solid var(--line-strong);border-radius:6px;background:radial-gradient(circle at 42% 38%,#fff,#d5d5d5);float:left;margin:0 12px 6px 0;}
+  .pin{position:absolute;z-index:20;background:var(--annot);color:#fff;border-radius:50%;width:20px;height:20px;line-height:20px;text-align:center;font-size:11px;font-weight:700;box-shadow:0 1px 3px rgba(0,0,0,.3);}
+  .cnum{display:inline-block;min-width:18px;height:18px;line-height:18px;text-align:center;background:var(--annot);color:#fff;border-radius:50%;font-size:11px;font-weight:700;margin-right:4px;}
+  .wf-annotations{background:#fff;border:1px solid var(--line);border-radius:6px;padding:16px 20px;margin-top:20px;}
+  .wf-annotations ol{margin:0;padding-left:8px;list-style:none;} .wf-annotations li{margin:0 0 10px;font-size:13px;line-height:1.45;}
+  .checklist{font-size:13px;line-height:1.7;} .checklist .ok{color:var(--ok);} .checklist .warn{color:var(--danger);}
+  code{background:#f0f0f0;padding:1px 5px;border-radius:3px;font-size:12px;}
+</style>
+</head>
+<body>
+
+  <div class="wf-meta">Screen: System States &nbsp;|&nbsp; Feature: zmesh-v1 &nbsp;|&nbsp; Version: 1 &nbsp;|&nbsp; Date: 2026-07-19 &nbsp;|&nbsp; Flows 1, 7, 8 &nbsp;|&nbsp; Fidelity: low</div>
+
+  <h1>System States</h1>
+  <p class="lead">The cross-cutting states that guard the edges of the experience: an unsupported browser (Flow 1), recovering unsaved work after a crash (Flow 7), and a bad project file (Flow 8). All three share one principle — <strong>fail safe and explain in plain language; never crash, never lose data silently</strong>.</p>
+
+  <!-- ============ CAPABILITY NOTICE ============ -->
+  <div class="state-label">State: Unsupported browser — no WebGPU or WebGL2 (Flow 1, NFR-05)</div>
+  <div class="frame" style="max-width:620px;">
+    <div class="stage" style="min-height:260px;display:flex;align-items:center;justify-content:center;position:relative;">
+      <span class="pin" style="left:10px;top:10px;">1</span>
+      <div class="card" style="width:420px;text-align:center;">
+        <span class="icon">▲</span>
+        <h3>zmesh can't run in this browser</h3>
+        <p>Sculpting needs 3D graphics (WebGPU or WebGL2) that this browser doesn't support. It's not you — try one of these:</p>
+        <p class="tiny muted" style="margin-bottom:16px;">Latest <b>Chrome</b>, <b>Edge</b>, <b>Safari</b>, or <b>Firefox</b> on a desktop or laptop.</p>
+        <div class="acts" style="justify-content:center;"><button class="btn">Learn more</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ RECOVERY ============ -->
+  <div class="state-label">State: Crash recovery — unsaved work found (Flow 7, FR-13)</div>
+  <div class="frame" style="max-width:620px;">
+    <div class="apphd"><span class="logo">zmesh</span><span>My projects</span></div>
+    <div class="stage" style="min-height:250px;position:relative;">
+      <span class="pin" style="left:10px;top:10px;">2</span>
+      <div class="scrim">
+        <div class="card" style="width:400px;">
+          <h3>Restore your last session?</h3>
+          <div class="thumb-preview"></div>
+          <p>zmesh recovered unsaved changes to <b>“My First Figure”</b> from your last visit (about 40 minutes of work).</p>
+          <div style="clear:both;"></div>
+          <div class="acts">
+            <button class="btn danger" style="position:relative;">Discard<span class="pin" style="right:-8px;top:-10px;">3</span></button>
+            <button class="btn primary">Restore</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ INVALID FILE ============ -->
+  <div class="row">
+    <div>
+      <div class="state-label">State: Invalid / corrupt .zmesh (Flow 8, NFR-08)</div>
+      <div class="frame" style="width:400px;">
+        <div class="apphd"><span class="logo">zmesh</span><span>My projects</span></div>
+        <div class="stage" style="height:200px;position:relative;">
+          <span class="pin" style="left:10px;top:10px;">4</span>
+          <div class="toast">
+            <b>Can't open that file.</b><br>
+            <span class="muted">“scan-export.zmesh” isn't a valid zmesh project, or it's damaged. Your current work is untouched.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="state-label">State: Newer file version (Flow 8)</div>
+      <div class="frame" style="width:400px;">
+        <div class="apphd"><span class="logo">zmesh</span><span>My projects</span></div>
+        <div class="stage" style="height:200px;position:relative;">
+          <span class="pin" style="left:10px;top:10px;">5</span>
+          <div class="scrim">
+            <div class="card" style="width:320px;">
+              <h3>Made in a newer zmesh</h3>
+              <p>This project uses a newer file format. Refresh to update zmesh, then open it again.</p>
+              <div class="acts"><button class="btn">Not now</button><button class="btn primary">Refresh</button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ CHECKLIST ============ -->
+  <h2>UX review checklist</h2>
+  <div class="checklist">
+    <div class="ok">✓ Fails safe — every state preserves current work; nothing is destroyed without confirmation.</div>
+    <div class="ok">✓ Plain language — no stack traces, no error codes; each message says what happened and what to do.</div>
+    <div class="ok">✓ Destructive clearly different — recovery "Discard" is red and paired with a safe default (Restore).</div>
+    <div class="ok">✓ Blame-free tone — "It's not you"; problems framed as the app's job to handle.</div>
+    <div class="warn">△ Capability notice is terminal (no in-app path forward) — must be genuinely helpful since it's a dead end.</div>
+    <div class="warn">△ "Discard" is the only irreversible action here — confirm copy is unambiguous before build.</div>
+  </div>
+
+  <!-- ============ ANNOTATIONS ============ -->
+  <div class="wf-annotations">
+    <h2 style="margin-top:0;">Annotations</h2>
+    <ol>
+      <li><span class="cnum">1</span><strong>Unsupported-browser notice</strong> (Flow 1, NFR-05) — shown only when neither WebGPU nor WebGL2 is available, before any canvas init. It's a terminal state, so it must be maximally helpful: name the supported browsers, reassure it's a capability gap, avoid jargon. No broken viewport is ever shown.</li>
+      <li><span class="cnum">2</span><strong>Recovery prompt</strong> (Flow 7, FR-13) — appears at open when IndexedDB holds autosaved changes newer than the last committed project state. Shows a thumbnail + how much work is at stake so the choice is informed. <strong>Restore is the safe default</strong> (primary).</li>
+      <li><span class="cnum">3</span><strong>Discard</strong> — the one destructive control in these states; red, non-default. Choosing it keeps the last saved state (never deletes the project itself). Recovery restores mesh state only — the undo stack is not persisted (BR-04).</li>
+      <li><span class="cnum">4</span><strong>Invalid/corrupt file</strong> (Flow 8, NFR-08) — imported files are untrusted; a defensive parser rejects bad input as a non-blocking toast. Crucially: <em>current work is untouched</em> — a bad load never mutates session state.</li>
+      <li><span class="cnum">5</span><strong>Version mismatch</strong> — a valid but newer-format file gets its own message (distinct from "corrupt") offering the real fix: refresh to update the app. Forward-compat honesty for a local-first app that updates by reload.</li>
+    </ol>
+  </div>
+
+  <p class="tiny muted" style="margin-top:18px;">Low-fidelity — grayscale, structural. Copy is indicative and will be refined during implementation.</p>
+</body>
+</html>
