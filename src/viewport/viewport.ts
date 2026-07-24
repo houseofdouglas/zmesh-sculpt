@@ -1,6 +1,7 @@
 import { initRenderer, type RendererInitResult, type ViewportInitResult } from './renderer';
 import { createScene, type ViewportScene } from './scene';
 import { createMeshSync, type MeshSync } from './mesh-sync';
+import { CameraController } from './camera-controller';
 import type { SculptEngine } from '../engine/sculpt-engine';
 
 export type { ViewportInitResult, RenderBackend } from './renderer';
@@ -22,9 +23,11 @@ export class Viewport {
   private readonly canvas: HTMLCanvasElement;
   private renderer: NonNullable<RendererInitResult['renderer']> | undefined;
   private viewportScene: ViewportScene | undefined;
+  private cameraController: CameraController | undefined;
   private placeholderActive = true;
   private meshSync: MeshSync | undefined;
   private meshSyncUnsubscribe: (() => void) | undefined;
+  private attachedEngine: SculptEngine | undefined;
   private resizeObserver: ResizeObserver | undefined;
   private rafHandle: number | null = null;
   private disposed = false;
@@ -74,6 +77,14 @@ export class Viewport {
 
     const { clientWidth, clientHeight } = this.container;
     this.viewportScene = createScene(safeAspect(clientWidth, clientHeight));
+    // Reuses the exact distance scene.ts already used to frame the
+    // placeholder (rather than recomputing it) so constructing the
+    // controller here reproduces the identical camera transform with no
+    // visible jump — yaw/pitch default to 0, matching scene.ts's own
+    // static (0,0,distance)-looking-at-origin setup.
+    this.cameraController = new CameraController(this.viewportScene.camera, {
+      radius: this.viewportScene.initialCameraDistanceMm,
+    });
     this.resize();
 
     // A ResizeObserver on the container (not a window 'resize' listener)
@@ -114,6 +125,44 @@ export class Viewport {
     this.meshSyncUnsubscribe = engine.onChange((region) => {
       this.meshSync?.sync(engine.getMesh(), region);
     });
+
+    this.attachedEngine = engine;
+    // FR-10: frame on mount / attach (this call) and on a new/loaded
+    // mesh — not on a remesh. There's no re-attach or reload path wired
+    // up yet (both are later-task scope: reframing on a *subsequent*
+    // loadMesh/newFromPrimitive on an already-attached engine needs a
+    // signal this basic onChange-only wiring can't yet distinguish from
+    // a remesh, since both currently produce an identical full-mesh
+    // DirtyRegion — left open for whoever completes that distinction).
+    this.frameModel();
+  }
+
+  /** Fits the camera to the attached engine's current mesh bounds (FR-10). A no-op if no engine is attached yet. */
+  frameModel(): void {
+    if (!this.attachedEngine) {
+      return;
+    }
+    this.cameraController?.frame(this.attachedEngine.getMesh().bounds);
+  }
+
+  /**
+   * Temporary, non-spec exposure for this task's own manual verification
+   * (its own text: "exercised from the harness with temporary buttons or
+   * keys") — orbit/pan/zoom aren't part of the spec's public `Viewport`
+   * API (only `frameModel` is); Task 07 will likely have the pointer
+   * router call `CameraController` directly rather than needing these
+   * kept around.
+   */
+  orbit(deltaYaw: number, deltaPitch: number): void {
+    this.cameraController?.orbit(deltaYaw, deltaPitch);
+  }
+
+  pan(screenDx: number, screenDy: number): void {
+    this.cameraController?.pan(screenDx, screenDy, this.container.clientHeight);
+  }
+
+  zoom(scaleFactor: number): void {
+    this.cameraController?.zoom(scaleFactor);
   }
 
   /**
@@ -138,6 +187,8 @@ export class Viewport {
     this.meshSyncUnsubscribe = undefined;
     this.meshSync?.dispose();
     this.meshSync = undefined;
+    this.attachedEngine = undefined;
+    this.cameraController = undefined;
 
     if (this.placeholderActive) {
       this.viewportScene?.placeholder.geometry.dispose();

@@ -86,7 +86,8 @@ The Node-testable core of this layer, importing no Three.js/DOM. `math/spherical
 
 ## Task: 05 — Camera controller: orbit / pan / zoom + frameModel
 
-**Layer**: Viewport · **Estimate**: 3hr · **Depends on**: 02, 03 · **Status**: PENDING
+**Layer**: Viewport · **Estimate**: 3hr · **Depends on**: 02, 03 · **Status**: DONE
+**Completed**: 2026-07-23
 
 ### What to build
 `src/viewport/camera-controller.ts`: orbit/pan/zoom around a target point in mm world space, using `spherical-camera.ts` math (in-house per the spec's leaning answer — the pointer router needs to own pointer-down anyway). `frameModel()` fits the camera to the current mesh bounds via `framingDistance`. Frame on mount and on new/loaded mesh, but not on remesh. (Raw input wiring is Task 07; this task exposes imperative orbit/pan/zoom/frame methods and can be exercised from the harness with temporary buttons or keys.)

@@ -26,6 +26,14 @@ export interface ViewportScene {
   clayMaterial: MeshStandardMaterial;
   /** Temporary lit solid so the scene is visibly correct before Task 04 wires up the real mesh. */
   placeholder: Mesh;
+  /**
+   * The distance this module used to frame the placeholder — exposed so
+   * `Viewport` can hand it straight to a `CameraController` (Task 05) as
+   * its initial radius, reproducing the exact same camera transform
+   * already set below with zero visual jump, rather than recomputing it
+   * (and duplicating `PLACEHOLDER_DIAMETER_MM`) a second time.
+   */
+  initialCameraDistanceMm: number;
 }
 
 /**
@@ -57,11 +65,12 @@ export function createScene(aspect: number): ViewportScene {
   // measure passed to framingDistance — the same math Task 05's
   // frameModel will reuse for the real mesh's actual bounds.
   const boundsDiagonalMm = PLACEHOLDER_DIAMETER_MM * Math.sqrt(3);
-  camera.position.set(0, 0, framingDistance(boundsDiagonalMm, fovYRadians));
+  const initialCameraDistanceMm = framingDistance(boundsDiagonalMm, fovYRadians);
+  camera.position.set(0, 0, initialCameraDistanceMm);
   camera.lookAt(0, 0, 0);
 
   const placeholder = new Mesh(new SphereGeometry(PLACEHOLDER_DIAMETER_MM / 2, 32, 16), clayMaterial);
   scene.add(placeholder);
 
-  return { scene, camera, clayMaterial, placeholder };
+  return { scene, camera, clayMaterial, placeholder, initialCameraDistanceMm };
 }
