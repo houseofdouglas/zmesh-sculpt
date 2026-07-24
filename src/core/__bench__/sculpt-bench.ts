@@ -10,6 +10,10 @@
  */
 import { sphere } from '../mesh/primitives';
 import { buildVertexAdjacency, type VertexAdjacency } from '../mesh/adjacency';
+import {
+  buildVertexTriangleIncidence,
+  type VertexTriangleIncidence,
+} from '../mesh/incidence';
 import { buildSpatialHash, queryRadius, updateVertexPosition } from '../mesh/spatial-hash';
 import { recomputeAffectedRegionNormals } from '../mesh/normals';
 import { applyDraw } from '../brushes/draw';
@@ -82,7 +86,12 @@ function computeDirtyAabb(positions: Float32Array, affected: readonly number[]):
   }
 }
 
-function runStroke(mesh: SculptMesh, adjacency: VertexAdjacency, brushRadius: number): number[] {
+function runStroke(
+  mesh: SculptMesh,
+  adjacency: VertexAdjacency,
+  incidence: VertexTriangleIncidence,
+  brushRadius: number,
+): number[] {
   const spatialHash = buildSpatialHash(mesh);
   const sphereRadius = mesh.bounds.max[0]!;
   const path = generateStrokePath(sphereRadius, STAMPS_PER_STROKE);
@@ -119,6 +128,7 @@ function runStroke(mesh: SculptMesh, adjacency: VertexAdjacency, brushRadius: nu
       mesh.indices,
       mesh.normals,
       adjacency,
+      incidence,
       affectedIndices,
     );
 
@@ -140,8 +150,9 @@ export function runBenchmark(): BenchResult[] {
       heightSegments: segments,
     });
     const adjacency = buildVertexAdjacency(mesh);
+    const incidence = buildVertexTriangleIncidence(mesh);
 
-    const timings = runStroke(mesh, adjacency, BRUSH_RADIUS_MM);
+    const timings = runStroke(mesh, adjacency, incidence, BRUSH_RADIUS_MM);
     // Drop the first stamp (JIT/cache warmup) and average the rest —
     // sustained rate is what matters for a continuous stroke.
     const steady = timings.slice(1);

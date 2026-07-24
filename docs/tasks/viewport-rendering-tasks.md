@@ -160,9 +160,9 @@ The Node-testable core of this layer, importing no Three.js/DOM. `math/spherical
 
 ## Task: 09 — Viewport facade: attachEngine, lifecycle/dispose hygiene, onFrameStats, perf verification
 
-**Layer**: Viewport · **Estimate**: 3hr · **Depends on**: 04, 05, 07, 08 · **Status**: DONE (see note)
-**Completed**: 2026-07-23
-**Note**: All facade work (attachEngine replace, dispose hygiene, onFrameStats) is done and verified. The ≥60fps@Med criterion passes; **≥30fps@Max does not** (measured ~25fps) — see the plan's Decisions & Notes for the full finding and a related `remesh()` target-overshoot bug found along the way. Marked DONE because the facade itself is complete and correct; the perf gap is a real, documented, unresolved finding, not something glossed over.
+**Layer**: Viewport · **Estimate**: 3hr · **Depends on**: 04, 05, 07, 08 · **Status**: DONE
+**Completed**: 2026-07-23 (perf gaps closed 2026-07-24)
+**Note**: All facade work (attachEngine replace, dispose hygiene, onFrameStats) is done and verified. Both criteria now pass: ≥60fps@Med and ≥30fps@Max. The Max criterion originally failed (~25fps); resolved 2026-07-24 by replacing a per-stamp O(triangleCount) normal scan (`findTrianglesTouchingVertices`) with a precomputed vertex→triangle incidence structure — now ~61fps at Max. A related `remesh()` target-overshoot bug found along the way was also fixed. See the plan's Decisions & Notes (Task 09 + Task 16 follow-ups) for the full findings.
 
 ### What to build
 Complete `src/viewport/viewport.ts`: `attachEngine(engine)` subscribes to `onChange` (and unsubscribes a prior engine on replace), rebuilding geometry from the new engine's mesh; rigorous `init()`/`dispose()` (idempotent; full teardown of rAF loop, listeners, GPU resources — no context leaks across mount/unmount); `onFrameStats(cb)` reporting fps. Verify the end-to-end performance criteria and dispose hygiene interactively.

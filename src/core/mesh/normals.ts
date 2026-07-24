@@ -1,12 +1,18 @@
 import type { VertexAdjacency } from './adjacency';
+import { collectIncidentTriangles, type VertexTriangleIncidence } from './incidence';
 
 /**
  * Finds every triangle touching at least one of the given vertices, via a
  * single O(triangleCount) scan. Simple and always correct, at the cost of
- * not being sub-linear. If profiling ever shows this is a hot spot for
- * large meshes, a precomputed vertex->triangle incidence structure (built
- * once per topology change, alongside adjacency/spatial-hash) would make
- * this O(1) per query — not needed yet at this task's scope.
+ * not being sub-linear.
+ *
+ * Production no longer calls this on the per-stamp hot path — profiling
+ * showed the scan was ~98% of a stamp's CPU cost at Max detail (~19ms at
+ * 500k triangles), so `recomputeAffectedRegionNormals` now uses a
+ * precomputed `VertexTriangleIncidence` (`collectIncidentTriangles`)
+ * instead, which is O(region size). This is retained as the trusted,
+ * dead-simple reference that the incidence path is verified equivalent to
+ * (incidence.test.ts).
  */
 export function findTrianglesTouchingVertices(
   indices: Uint32Array,
@@ -124,12 +130,18 @@ export function recomputeNormalsForTriangles(
  * affected vertices themselves, plus their one-ring neighbors (FR-4) — a
  * neighbor's incident-face orientation can change even if the neighbor
  * itself didn't move, since it shares a triangle with one that did.
+ *
+ * The incident triangles are gathered from the precomputed `incidence`
+ * (O(region size)) rather than scanned for (O(triangleCount)) — the single
+ * change that took a Max-detail stamp's CPU cost from ~19ms to well under
+ * 1ms; see `findTrianglesTouchingVertices`' note and incidence.ts.
  */
 export function recomputeAffectedRegionNormals(
   positions: Float32Array,
   indices: Uint32Array,
   normals: Float32Array,
   adjacency: VertexAdjacency,
+  incidence: VertexTriangleIncidence,
   affectedIndices: readonly number[],
 ): void {
   const region = new Set<number>();
@@ -142,9 +154,9 @@ export function recomputeAffectedRegionNormals(
     }
   }
 
-  // Every triangle incident to a region vertex touches that vertex, so is
-  // necessarily found here — `region` is therefore a complete, correct
-  // update set for this triangle list (see recomputeNormalsForTriangles).
-  const triangles = findTrianglesTouchingVertices(indices, region);
+  // Every triangle incident to a region vertex is gathered here, deduped —
+  // so `region` is a complete, correct update set for this triangle list
+  // (see recomputeNormalsForTriangles).
+  const triangles = collectIncidentTriangles(incidence, region);
   recomputeNormalsForTriangles(positions, indices, normals, triangles, region);
 }

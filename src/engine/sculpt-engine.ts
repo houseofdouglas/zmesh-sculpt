@@ -1,6 +1,10 @@
 import { SculptMeshValidationError, type SculptMesh } from '../core/mesh/sculpt-mesh';
 import { sphere, egg, block, capsule } from '../core/mesh/primitives';
 import { buildVertexAdjacency, type VertexAdjacency } from '../core/mesh/adjacency';
+import {
+  buildVertexTriangleIncidence,
+  type VertexTriangleIncidence,
+} from '../core/mesh/incidence';
 import { buildSpatialHash, queryRadius, updateVertexPosition, type SpatialHash } from '../core/mesh/spatial-hash';
 import { recomputeAffectedRegionNormals } from '../core/mesh/normals';
 import { STAMP_BRUSH_KERNELS, type BrushKernel, type Stamp, type StampBrushType } from '../core/brushes';
@@ -71,6 +75,7 @@ const PRIMITIVE_GENERATORS: Readonly<Record<PrimitiveShape, () => SculptMesh>> =
 export class SculptEngine {
   private mesh: SculptMesh;
   private adjacency: VertexAdjacency;
+  private incidence: VertexTriangleIncidence;
   private spatialHash: SpatialHash;
   private history: SculptHistory;
 
@@ -98,6 +103,7 @@ export class SculptEngine {
     const initial = sphere();
     this.mesh = initial;
     this.adjacency = buildVertexAdjacency(initial);
+    this.incidence = buildVertexTriangleIncidence(initial);
     this.spatialHash = buildSpatialHash(initial);
     this.history = new SculptHistory();
     // Lazily-invoked: constructing this closure never touches `Worker`
@@ -332,6 +338,7 @@ export class SculptEngine {
       this.mesh.indices,
       this.mesh.normals,
       this.adjacency,
+      this.incidence,
       affected,
     );
     for (const v of affected) {
@@ -351,6 +358,7 @@ export class SculptEngine {
       this.mesh.indices,
       this.mesh.normals,
       this.adjacency,
+      this.incidence,
       affected,
     );
     for (const v of affected) {
@@ -435,6 +443,7 @@ export class SculptEngine {
         this.mesh.indices,
         this.mesh.normals,
         this.adjacency,
+        this.incidence,
         indices,
       );
       for (const v of indices) {
@@ -463,6 +472,7 @@ export class SculptEngine {
   private replaceMeshKeepingHistory(mesh: SculptMesh): void {
     this.mesh = mesh;
     this.adjacency = buildVertexAdjacency(mesh);
+    this.incidence = buildVertexTriangleIncidence(mesh);
     this.spatialHash = buildSpatialHash(mesh);
   }
 

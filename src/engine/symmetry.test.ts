@@ -4,6 +4,7 @@ import type { Stamp } from '../core/brushes/brush-kernel';
 import { applyDraw } from '../core/brushes/draw';
 import { recomputeAffectedRegionNormals } from '../core/mesh/normals';
 import { buildVertexAdjacency } from '../core/mesh/adjacency';
+import { buildVertexTriangleIncidence } from '../core/mesh/incidence';
 import { buildSpatialHash, queryRadius } from '../core/mesh/spatial-hash';
 import { sphere } from '../core/mesh/primitives';
 import type { SurfaceHit } from './stroke';
@@ -94,6 +95,7 @@ describe('symmetricStamps end-to-end with a Draw stroke on a sphere', () => {
   it('produces mirror-equal displacement on -X for a +X stroke', () => {
     const mesh = sphere(50);
     const adjacency = buildVertexAdjacency(mesh);
+    const incidence = buildVertexTriangleIncidence(mesh);
     const spatialHash = buildSpatialHash(mesh);
     const before = mesh.positions.slice();
 
@@ -120,7 +122,7 @@ describe('symmetricStamps end-to-end with a Draw stroke on a sphere', () => {
     for (const s of symmetricStamps(stamp, 'x')) {
       const affected = queryRadius(spatialHash, mesh.positions, s.center, s.radius);
       applyDraw({ positions: mesh.positions, normals: mesh.normals, adjacency, affectedIndices: affected, stamp: s });
-      recomputeAffectedRegionNormals(mesh.positions, mesh.indices, mesh.normals, adjacency, affected);
+      recomputeAffectedRegionNormals(mesh.positions, mesh.indices, mesh.normals, adjacency, incidence, affected);
     }
 
     const originDelta = [0, 1, 2].map((i) => mesh.positions[originVertex * 3 + i]! - before[originVertex * 3 + i]!);

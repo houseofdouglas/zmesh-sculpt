@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { createSculptMesh } from './sculpt-mesh';
 import { buildVertexAdjacency } from './adjacency';
+import { buildVertexTriangleIncidence } from './incidence';
 import {
   recomputeAffectedRegionNormals,
   findTrianglesTouchingVertices,
@@ -32,6 +33,7 @@ describe('recomputeAffectedRegionNormals', () => {
   it('updates the affected region to match a full mesh recompute', () => {
     const mesh = sphere(50);
     const adjacency = buildVertexAdjacency(mesh);
+    const incidence = buildVertexTriangleIncidence(mesh);
 
     const movedVertex = 10;
     const positions = mesh.positions.slice();
@@ -40,7 +42,14 @@ describe('recomputeAffectedRegionNormals', () => {
     positions[movedVertex * 3 + 2] = positions[movedVertex * 3 + 2]! - 2;
 
     const normals = mesh.normals.slice(); // stale copy, patched in place below
-    recomputeAffectedRegionNormals(positions, mesh.indices, normals, adjacency, [movedVertex]);
+    recomputeAffectedRegionNormals(
+      positions,
+      mesh.indices,
+      normals,
+      adjacency,
+      incidence,
+      [movedVertex],
+    );
 
     // Ground truth: a full mesh rebuilt from the same (mutated) positions.
     const fullRebuild = createSculptMesh(positions, mesh.indices);
@@ -55,6 +64,7 @@ describe('recomputeAffectedRegionNormals', () => {
   it('leaves normals outside the affected region untouched', () => {
     const mesh = sphere(50);
     const adjacency = buildVertexAdjacency(mesh);
+    const incidence = buildVertexTriangleIncidence(mesh);
 
     const movedVertex = 10;
     const positions = mesh.positions.slice();
@@ -63,7 +73,14 @@ describe('recomputeAffectedRegionNormals', () => {
     const normals = mesh.normals.slice();
     const originalSnapshot = normals.slice();
 
-    recomputeAffectedRegionNormals(positions, mesh.indices, normals, adjacency, [movedVertex]);
+    recomputeAffectedRegionNormals(
+      positions,
+      mesh.indices,
+      normals,
+      adjacency,
+      incidence,
+      [movedVertex],
+    );
 
     const region = oneRingRegion(adjacency, movedVertex);
     let farVertex = -1;
