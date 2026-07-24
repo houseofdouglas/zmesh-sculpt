@@ -14,7 +14,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "bench:sculpt": "vite-node src/core/__bench__/sculpt-bench.ts"
+    "bench:sculpt": "vite-node src/core/__bench__/sculpt-bench.ts",
+    "bench:facade": "vite-node src/engine/__bench__/facade-bench.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
