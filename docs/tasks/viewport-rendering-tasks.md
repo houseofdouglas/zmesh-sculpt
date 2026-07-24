@@ -104,7 +104,8 @@ The Node-testable core of this layer, importing no Three.js/DOM. `math/spherical
 
 ## Task: 06 — Picking: raycast → SurfaceHit (point, normal, grab worldDelta)
 
-**Layer**: Viewport · **Estimate**: 2hr · **Depends on**: 02, 04 · **Status**: PENDING
+**Layer**: Viewport · **Estimate**: 2hr · **Depends on**: 02, 04 · **Status**: DONE
+**Completed**: 2026-07-23
 
 ### What to build
 `src/viewport/picking.ts`: a `THREE.Raycaster`-based pick from a pointer position to the mesh, producing `SurfaceHit` (`point`, interpolated `normal`). Compute grab `worldDelta` from frame-to-frame cursor motion via `projectScreenDeltaToWorld` (Task 02). Harness: log hits under the cursor to confirm point/normal are correct.

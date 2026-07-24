@@ -1,8 +1,12 @@
+import { Raycaster } from 'three';
 import { initRenderer, type RendererInitResult, type ViewportInitResult } from './renderer';
 import { createScene, type ViewportScene } from './scene';
 import { createMeshSync, type MeshSync } from './mesh-sync';
 import { CameraController } from './camera-controller';
+import { computeGrabWorldDelta, pickSurfaceHit, pixelToNdc } from './picking';
 import type { SculptEngine } from '../engine/sculpt-engine';
+import type { SurfaceHit } from '../engine/stroke';
+import type { Vec3 } from './math/vec3';
 
 export type { ViewportInitResult, RenderBackend } from './renderer';
 
@@ -28,6 +32,7 @@ export class Viewport {
   private meshSync: MeshSync | undefined;
   private meshSyncUnsubscribe: (() => void) | undefined;
   private attachedEngine: SculptEngine | undefined;
+  private readonly raycaster = new Raycaster();
   private resizeObserver: ResizeObserver | undefined;
   private rafHandle: number | null = null;
   private disposed = false;
@@ -163,6 +168,39 @@ export class Viewport {
 
   zoom(scaleFactor: number): void {
     this.cameraController?.zoom(scaleFactor);
+  }
+
+  /**
+   * Raycasts from a pointer position (in container-relative pixels)
+   * against the attached mesh, returning a `SurfaceHit` or `null` on a
+   * miss (FR-16). Temporary, non-spec exposure for this task's own
+   * manual verification, same rationale as `orbit`/`pan`/`zoom` — Task 07
+   * will likely have the pointer router call `picking.ts` directly.
+   */
+  pick(pixelX: number, pixelY: number): SurfaceHit | null {
+    if (!this.viewportScene || !this.meshSync) {
+      return null;
+    }
+    const { x, y } = pixelToNdc(pixelX, pixelY, this.container.clientWidth, this.container.clientHeight);
+    return pickSurfaceHit(this.raycaster, this.viewportScene.camera, this.meshSync.mesh, x, y);
+  }
+
+  /**
+   * Grab's `worldDelta` (FR-17) at `grabPoint`'s depth, for this frame's
+   * screen-pixel motion. Temporary, non-spec exposure — same rationale
+   * as `pick`.
+   */
+  grabDelta(grabPoint: Vec3, screenDx: number, screenDy: number): Vec3 | null {
+    if (!this.viewportScene) {
+      return null;
+    }
+    return computeGrabWorldDelta(
+      this.viewportScene.camera,
+      grabPoint,
+      screenDx,
+      screenDy,
+      this.container.clientHeight,
+    );
   }
 
   /**

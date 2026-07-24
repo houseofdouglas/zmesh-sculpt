@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type JSX } from 'react';
 import { Viewport, type ViewportInitResult } from './viewport/viewport';
 import { SculptEngine } from './engine/sculpt-engine';
+import type { Vec3 } from './viewport/math/vec3';
 import styles from './App.module.css';
 
 /** North pole of the default sphere (diameter 50mm, origin-centered) — a stable, known-good hit for a scripted stroke. */
@@ -29,6 +30,8 @@ export function App(): JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null);
   const engineRef = useRef<SculptEngine | null>(null);
   const viewportRef = useRef<Viewport | null>(null);
+  const hitReadoutRef = useRef<HTMLParagraphElement>(null);
+  const lastHitPointRef = useRef<Vec3 | null>(null);
   const [status, setStatus] = useState<ViewportInitResult | null>(null);
 
   useEffect(() => {
@@ -77,8 +80,44 @@ export function App(): JSX.Element {
     void engineRef.current?.setDetail('low');
   }
 
+  /**
+   * Task 06 verification: raycasts under the click and reports the
+   * result both to the console (for automated checks) and a small
+   * on-screen readout (updated directly on the DOM node, bypassing React
+   * state, so this frequent-ish event never triggers a re-render).
+   */
+  function handleContainerClick(event: React.MouseEvent<HTMLDivElement>): void {
+    const container = containerRef.current;
+    const viewport = viewportRef.current;
+    if (!container || !viewport) {
+      return;
+    }
+    const rect = container.getBoundingClientRect();
+    const hit = viewport.pick(event.clientX - rect.left, event.clientY - rect.top);
+    const message = hit
+      ? `hit: point=[${hit.point.map((n) => n.toFixed(1)).join(', ')}] normal=[${hit.normal.map((n) => n.toFixed(2)).join(', ')}]`
+      : 'hit: none (empty space)';
+    console.log(`[pick] ${message}`);
+    if (hitReadoutRef.current) {
+      hitReadoutRef.current.textContent = message;
+    }
+    lastHitPointRef.current = hit ? [...hit.point] : null;
+  }
+
+  /** Task 06 verification: computes Grab's worldDelta at the last picked point's depth for a fixed screen delta. */
+  function testGrabDelta(): void {
+    const grabPoint = lastHitPointRef.current;
+    const viewport = viewportRef.current;
+    if (!grabPoint || !viewport) {
+      console.log('[grabDelta] no prior pick to test against — click the model first');
+      return;
+    }
+    const delta = viewport.grabDelta(grabPoint, 50, 0);
+    console.log(`[grabDelta] screenDx=50 -> worldDelta=[${delta?.map((n) => n.toFixed(3)).join(', ')}]`);
+  }
+
   return (
-    <div className={styles.viewport} ref={containerRef}>
+    <div className={styles.viewport} ref={containerRef} onClick={handleContainerClick}>
       {status === null && <p className={styles.placeholder}>Initializing renderer…</p>}
       {status !== null && !status.ok && (
         <p className={styles.placeholder}>Viewport unavailable: {status.reason}</p>
@@ -86,6 +125,9 @@ export function App(): JSX.Element {
       {status !== null && status.ok && (
         <>
           <p className={styles.placeholder}>backend: {status.backend}</p>
+          <p className={styles.placeholder} style={{ top: '32px' }} ref={hitReadoutRef}>
+            click the model to pick
+          </p>
           <div className={styles.devPanel}>
             <button type="button" onClick={scriptedDrawStroke}>
               Scripted Draw stroke
@@ -119,6 +161,9 @@ export function App(): JSX.Element {
             </button>
             <button type="button" onClick={() => viewportRef.current?.frameModel()}>
               Frame model
+            </button>
+            <button type="button" onClick={testGrabDelta}>
+              Test Grab delta
             </button>
           </div>
         </>
