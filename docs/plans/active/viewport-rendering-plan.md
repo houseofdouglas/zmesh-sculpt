@@ -8,7 +8,7 @@ Tasks: docs/tasks/viewport-rendering-tasks.md
 
 ## Progress
 - [x] 01 — Install three + renderer init, capability detection, dev harness
-- [ ] 02 — Pure math helpers (spherical-camera, grab-projection, dirty-range)
+- [x] 02 — Pure math helpers (spherical-camera, grab-projection, dirty-range)
 - [ ] 03 — Scene: lights, clay material, static default camera, resize
 - [ ] 04 — Mesh-sync: SculptMesh → geometry, partial upload, topology rebuild
 - [ ] 05 — Camera controller: orbit / pan / zoom + frameModel
@@ -28,3 +28,7 @@ Tasks: docs/tasks/viewport-rendering-tasks.md
 - Milestone shape: real sphere on screen by Task 04; full pointer→engine→mesh→screen sculpt loop closed by Task 07; end-to-end ≥60fps perf criterion (the one left PARTIAL by the engine's headless benchmark) validated in Task 09.
 - Spec Open Questions planned toward their leaning answers: in-house camera math (Task 05), oriented-ring cursor (Task 08), brush radius via `BrushDisplayConfig` not an engine getter (Task 08). Revisit at implementation if any proves wrong.
 - Task 07 (pointer router) is the fiddly one (trackpad gesture detection: pinch arrives as wheel+ctrlKey, etc.); kept as one task but a candidate to split into mouse vs trackpad if it gets unwieldy.
+- Task 02: added `math/vec3.ts` (add/subtract/scale/dot/cross/length/normalize over a `readonly [number,number,number]` tuple), not listed in the spec's own Architecture table — all three named modules need the same handful of vector operations, so a small shared helper avoided hand-rolling cross/dot/scale three times. Framework-free like the rest of `math/` (no `THREE.Vector3`), so it stays Node-testable.
+- Task 02: `framingDistance` treats the bounds diagonal as a worst-case bounding-sphere diameter (`d = diagonal / (2*tan(fovY/2))`) and applies a small feel-tuned margin (1.15×) above the tight fit so the framed model doesn't touch the exact view edge — margin only increases the returned distance, so it can't violate the acceptance criterion's "projected extent ≤ view height" (it only ever loosens that inequality further).
+- Task 02: `projectScreenDeltaToWorld`'s depth is measured **along `cameraForward`** (a projection of `grabPoint - cameraPosition` onto the forward axis), not the straight-line distance to `grabPoint` — the correct quantity for a perspective FOV, and consistent with `framingDistance`'s own distance-along-view-direction convention. Screen Y is negated when mapping to the world "up" axis, since screen-space Y conventionally grows downward.
+- Task 02: one test (`yields zero delta for zero screen motion`) initially failed on a `-0` vs `0` mismatch from `toEqual` on the returned tuple — `-screenDy` with `screenDy=0` produces `-0` in the up-component multiply, which is numerically identical to `0` (`-0 === 0`) but distinguished by `toEqual`'s `Object.is` semantics. Not a real bug; fixed by asserting each component with `toBeCloseTo` instead of a whole-tuple `toEqual`.

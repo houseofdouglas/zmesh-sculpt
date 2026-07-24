@@ -30,7 +30,8 @@ Add the `three` dependency (and `@webgpu/types` if needed for `navigator.gpu` ca
 
 ## Task: 02 — Pure math helpers (spherical-camera, grab-projection, dirty-range)
 
-**Layer**: Viewport (pure) · **Estimate**: 3hr · **Depends on**: 01 · **Status**: PENDING
+**Layer**: Viewport (pure) · **Estimate**: 3hr · **Depends on**: 01 · **Status**: DONE
+**Completed**: 2026-07-23
 
 ### What to build
 The Node-testable core of this layer, importing no Three.js/DOM. `math/spherical-camera.ts`: `framingDistance(boundsDiagonalMm, fovYRadians)` and `sphericalToPosition(target, radius, yaw, pitch)`. `math/grab-projection.ts`: `projectScreenDeltaToWorld(...)` mapping a screen-pixel delta to a world-space delta on the camera-facing plane through the grab point. `math/dirty-range.ts`: `vertexRangeToAttributeRange(vertexStart, vertexEnd)` → `{ offset, count }` for an xyz `BufferAttribute`.
