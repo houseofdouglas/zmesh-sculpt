@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type JSX } from 'react';
-import { Viewport, type ViewportInitResult } from './viewport/viewport';
+import { Viewport, type ViewportInitResult, type BrushDisplayConfig } from './viewport/viewport';
 import { SculptEngine } from './engine/sculpt-engine';
 import type { Vec3 } from './viewport/math/vec3';
 import styles from './App.module.css';
@@ -25,6 +25,8 @@ const PAN_STEP_PX = 60;
 /** Multiplicative zoom factor per click (< 1 zooms in, > 1 zooms out). */
 const ZOOM_IN_FACTOR = 0.85;
 const ZOOM_OUT_FACTOR = 1 / ZOOM_IN_FACTOR;
+/** mm change per click for the cursor-radius demo buttons. */
+const CURSOR_RADIUS_STEP_MM = 2;
 
 export function App(): JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -32,6 +34,7 @@ export function App(): JSX.Element {
   const viewportRef = useRef<Viewport | null>(null);
   const hitReadoutRef = useRef<HTMLParagraphElement>(null);
   const lastHitPointRef = useRef<Vec3 | null>(null);
+  const brushDisplayRef = useRef<BrushDisplayConfig>({ cursorRadiusMm: 5, symmetryX: true });
   const [status, setStatus] = useState<ViewportInitResult | null>(null);
 
   useEffect(() => {
@@ -116,6 +119,24 @@ export function App(): JSX.Element {
     console.log(`[grabDelta] screenDx=50 -> worldDelta=[${delta?.map((n) => n.toFixed(3)).join(', ')}]`);
   }
 
+  /** Task 08 verification: pushes a brush-display change through setBrushDisplay (cursor radius / mirror-plane visibility). */
+  function adjustCursorRadius(deltaMm: number): void {
+    const next = {
+      ...brushDisplayRef.current,
+      cursorRadiusMm: Math.max(1, brushDisplayRef.current.cursorRadiusMm + deltaMm),
+    };
+    brushDisplayRef.current = next;
+    viewportRef.current?.setBrushDisplay(next);
+    console.log(`[brushDisplay] cursorRadiusMm=${next.cursorRadiusMm}`);
+  }
+
+  function toggleSymmetry(): void {
+    const next = { ...brushDisplayRef.current, symmetryX: !brushDisplayRef.current.symmetryX };
+    brushDisplayRef.current = next;
+    viewportRef.current?.setBrushDisplay(next);
+    console.log(`[brushDisplay] symmetryX=${next.symmetryX}`);
+  }
+
   return (
     <div className={styles.viewport} ref={containerRef} onClick={handleContainerClick}>
       {status === null && <p className={styles.placeholder}>Initializing renderer…</p>}
@@ -164,6 +185,15 @@ export function App(): JSX.Element {
             </button>
             <button type="button" onClick={testGrabDelta}>
               Test Grab delta
+            </button>
+            <button type="button" onClick={() => adjustCursorRadius(CURSOR_RADIUS_STEP_MM)}>
+              Cursor radius +2mm
+            </button>
+            <button type="button" onClick={() => adjustCursorRadius(-CURSOR_RADIUS_STEP_MM)}>
+              Cursor radius -2mm
+            </button>
+            <button type="button" onClick={toggleSymmetry}>
+              Toggle symmetry
             </button>
           </div>
         </>

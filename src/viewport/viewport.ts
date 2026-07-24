@@ -5,11 +5,13 @@ import { createMeshSync, type MeshSync } from './mesh-sync';
 import { CameraController } from './camera-controller';
 import { computeGrabWorldDelta, pickSurfaceHit, pixelToNdc } from './picking';
 import { PointerRouter } from './pointer-router';
+import { createCursor, type BrushDisplayConfig, type Cursor } from './cursor';
 import type { SculptEngine } from '../engine/sculpt-engine';
 import type { SurfaceHit } from '../engine/stroke';
 import type { Vec3 } from './math/vec3';
 
 export type { ViewportInitResult, RenderBackend } from './renderer';
+export type { BrushDisplayConfig } from './cursor';
 
 /** Canvas background where the scene doesn't otherwise draw. */
 const CLEAR_COLOR = 0x1a1a1a;
@@ -30,6 +32,7 @@ export class Viewport {
   private viewportScene: ViewportScene | undefined;
   private cameraController: CameraController | undefined;
   private pointerRouter: PointerRouter | undefined;
+  private cursor: Cursor | undefined;
   private placeholderActive = true;
   private meshSync: MeshSync | undefined;
   private meshSyncUnsubscribe: (() => void) | undefined;
@@ -93,6 +96,10 @@ export class Viewport {
       radius: this.viewportScene.initialCameraDistanceMm,
     });
 
+    // FR-18/19: the brush cursor ring and mirror-plane indicator.
+    this.cursor = createCursor();
+    this.viewportScene.scene.add(this.cursor.ring, this.cursor.mirrorPlane);
+
     // FR-11 through FR-15: routes pointer/wheel gestures to either the
     // engine's stroke lifecycle or the camera controller. `getEngine`/
     // `pick` are lazy closures rather than snapshotted values, since
@@ -105,6 +112,7 @@ export class Viewport {
       getEngine: () => this.attachedEngine,
       pick: (pixelX, pixelY) => this.pick(pixelX, pixelY),
       getViewportHeightPx: () => this.container.clientHeight,
+      updateCursor: (hit) => this.cursor?.updateHover(hit),
     });
 
     this.resize();
@@ -165,6 +173,14 @@ export class Viewport {
       return;
     }
     this.cameraController?.frame(this.attachedEngine.getMesh().bounds);
+  }
+
+  /**
+   * Brush **display** config from the UI (FR-20) — cursor radius and
+   * symmetry on/off — without the viewport owning brush state itself.
+   */
+  setBrushDisplay(config: BrushDisplayConfig): void {
+    this.cursor?.setBrushDisplay(config);
   }
 
   /**
@@ -240,6 +256,9 @@ export class Viewport {
 
     this.pointerRouter?.dispose();
     this.pointerRouter = undefined;
+
+    this.cursor?.dispose();
+    this.cursor = undefined;
 
     this.meshSyncUnsubscribe?.();
     this.meshSyncUnsubscribe = undefined;

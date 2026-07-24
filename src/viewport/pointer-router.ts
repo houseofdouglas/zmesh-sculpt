@@ -92,6 +92,15 @@ export interface PointerRouterDeps {
   getEngine: () => SculptEngine | undefined;
   pick: (pixelX: number, pixelY: number) => SurfaceHit | null;
   getViewportHeightPx: () => number;
+  /**
+   * The brush-cursor ring (FR-18, Task 08). Optional so this module
+   * doesn't hard-require a cursor to exist. Called on every hover/drag
+   * move with the current hit, or `null` to hide it — including
+   * whenever a camera gesture is active, per the spec ("hides ... when
+   * a camera gesture is active"), reusing whatever hit was already
+   * raycast for that move rather than raycasting twice.
+   */
+  updateCursor?: (hit: SurfaceHit | null) => void;
 }
 
 /**
@@ -163,12 +172,20 @@ export class PointerRouter {
       engine?.setInvert(event.altKey);
       engine?.beginStroke(hit);
     }
+    this.deps.updateCursor?.(mode === 'sculpt' ? hit : null);
   };
 
   private handlePointerMove = (event: PointerEvent): void => {
     const gesture = this.activeGesture;
-    if (!gesture || gesture.pointerId !== event.pointerId) {
+    if (!gesture) {
+      // Passive hover (no gesture in progress): just track the
+      // brush-cursor ring (FR-18) — nothing else to route.
+      const { x, y } = this.pixelPosition(event.clientX, event.clientY);
+      this.deps.updateCursor?.(this.deps.pick(x, y));
       return;
+    }
+    if (gesture.pointerId !== event.pointerId) {
+      return; // a different pointer moved while this one owns the active gesture
     }
 
     const dx = event.clientX - gesture.lastClientX;
@@ -182,9 +199,12 @@ export class PointerRouter {
       const engine = this.deps.getEngine();
       engine?.setInvert(event.altKey);
       engine?.updateStroke(hit); // null when the pointer has left the mesh mid-stroke — a safe no-op the engine already handles
+      this.deps.updateCursor?.(hit);
       return;
     }
 
+    // Camera mode: the ring hides while orbiting/panning/zooming (FR-18).
+    this.deps.updateCursor?.(null);
     if (gesture.gestureKind === 'pan-drag') {
       this.deps.cameraController.pan(dx, dy, this.deps.getViewportHeightPx());
     } else {
@@ -209,6 +229,7 @@ export class PointerRouter {
 
   private handleWheel = (event: WheelEvent): void => {
     event.preventDefault();
+    this.deps.updateCursor?.(null); // a wheel gesture is always camera (FR-18 hides the ring)
     const kind = classifyWheelGesture({ ctrlKey: event.ctrlKey, shiftKey: event.shiftKey });
     if (kind === 'zoom') {
       this.deps.cameraController.zoom(1 + event.deltaY * WHEEL_ZOOM_SENSITIVITY);

@@ -142,7 +142,8 @@ The Node-testable core of this layer, importing no Three.js/DOM. `math/spherical
 
 ## Task: 08 — Brush cursor ring + mirror-plane indicator + setBrushDisplay
 
-**Layer**: Viewport · **Estimate**: 2hr · **Depends on**: 06 · **Status**: PENDING
+**Layer**: Viewport · **Estimate**: 2hr · **Depends on**: 06 · **Status**: DONE
+**Completed**: 2026-07-23
 
 ### What to build
 `src/viewport/cursor.ts`: an oriented ring (per the spec's leaning answer — simplest, revisit if it reads poorly on high curvature) that follows the hovered surface point, oriented to the normal, sized to `BrushDisplayConfig.cursorRadiusMm`; hidden off-mesh or during a camera gesture. A subtle mirror-plane indicator at x=0 shown when `symmetryX` is on. `Viewport.setBrushDisplay(config)` feeds both without the viewport owning brush state.
