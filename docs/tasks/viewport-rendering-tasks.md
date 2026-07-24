@@ -49,7 +49,8 @@ The Node-testable core of this layer, importing no Three.js/DOM. `math/spherical
 
 ## Task: 03 — Scene: lights, clay material, static default camera, resize
 
-**Layer**: Viewport · **Estimate**: 2hr · **Depends on**: 01 · **Status**: PENDING
+**Layer**: Viewport · **Estimate**: 2hr · **Depends on**: 01 · **Status**: DONE
+**Completed**: 2026-07-23
 
 ### What to build
 `src/viewport/scene.ts`: the scene graph — a neutral matte "clay" material, lighting that reads form from any angle (key + fill + ambient, or an equivalent), and a static `PerspectiveCamera` (interactive control comes in Task 05). Handle container resize / devicePixelRatio: update renderer size and camera aspect without reallocating mesh buffers. Render a temporary placeholder solid (e.g. a Three.js sphere) so the lighting is visible.
