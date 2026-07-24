@@ -22,6 +22,33 @@ export class RemeshValidationError extends Error {
 const SIMPLIFY_TOLERANCE_FRACTION = 0.25;
 
 /**
+ * The correction loop below scales its length/tolerance estimate by
+ * `ratio ** exponent` each attempt (`ratio` = actual/target triangle
+ * count), and the two resampling primitives need *different* exponents
+ * because triangle count responds to their parameter with a different
+ * power law:
+ *
+ *   - `refineToLength` subdivides toward a target edge *spacing*, so
+ *     triangle count scales with the inverse *square* of edge length
+ *     (halving the length ≈ 4× the triangles). Inverting that to solve
+ *     for the length that hits the target needs `sqrt(ratio)`.
+ *   - `simplify` collapses edges under a deviation *tolerance*, and
+ *     empirically triangle count scales with the inverse *first* power of
+ *     that tolerance (halving the tolerance ≈ 2× the triangles — measured
+ *     across smooth and sculpted meshes; there's no square in it because a
+ *     tolerance bounds surface deviation, not edge spacing). Inverting
+ *     that needs `ratio` directly.
+ *
+ * Using the refine exponent on the simplify branch (as an earlier version
+ * did) under-corrects by a square root every attempt, so a large
+ * decrease-detail jump — e.g. a Max→Med step — never converges within
+ * `MAX_ATTEMPTS`, landing at ~0.2-0.6× of target instead. See the
+ * decrease-detail regression case in remesh.test.ts.
+ */
+const REFINE_CORRECTION_EXPONENT = 0.5;
+const SIMPLIFY_CORRECTION_EXPONENT = 1;
+
+/**
  * How close the actual output triangle count must land to
  * `targetTriangleCount` (as a fraction) before the correction loop below
  * stops refining its edge-length estimate.
@@ -60,9 +87,12 @@ const MAX_ATTEMPTS = 3;
  * runs the estimate through up to `MAX_ATTEMPTS` correction rounds:
  * remesh, check the actual output count against the target, and — if
  * it's off by more than `TARGET_TOLERANCE_FRACTION` — scale the edge
- * length by `sqrt(actual/target)` (triangle count scales with the
- * inverse square of edge length) and try again, always starting fresh
- * from the original `mesh` rather than compounding onto the previous
+ * length by `(actual/target) ** exponent` and try again, where the
+ * exponent depends on which primitive is running (see
+ * `REFINE_CORRECTION_EXPONENT` / `SIMPLIFY_CORRECTION_EXPONENT`: refine's
+ * triangle count scales with the inverse square of edge length,
+ * simplify's with the inverse first power of tolerance), always starting
+ * fresh from the original `mesh` rather than compounding onto the previous
  * attempt's output (compounding is what made the inaccuracy *worse*
  * across repeated remeshes in practice, not better). Each attempt is a
  * full WASM round trip (~150-200ms measured at a few hundred thousand
@@ -80,6 +110,14 @@ export async function remesh(
   onProgress?.(0.2);
 
   let edgeLength = estimateEdgeLengthForTarget(mesh, targetTriangleCount);
+  // Which primitive runs depends only on target vs. source count, and the
+  // loop always resamples the original `mesh`, so this never changes across
+  // attempts — hence the correction exponent is fixed up front. Mirrors the
+  // branch condition in `remeshOnce`.
+  const correctionExponent =
+    targetTriangleCount > mesh.triangleCount
+      ? REFINE_CORRECTION_EXPONENT
+      : SIMPLIFY_CORRECTION_EXPONENT;
   let result: SculptMesh | undefined;
 
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
@@ -92,7 +130,7 @@ export async function remesh(
     if (withinTolerance || attempt === MAX_ATTEMPTS - 1) {
       break;
     }
-    edgeLength *= Math.sqrt(ratio);
+    edgeLength *= Math.pow(ratio, correctionExponent);
   }
 
   const check = checkManifold(result!);

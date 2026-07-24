@@ -80,6 +80,26 @@ describe('remesh', () => {
     expect(checkManifold(result).ok).toBe(true);
   });
 
+  it('converges within tolerance on a large decrease-detail jump (the simplify path)', async () => {
+    // The mirror of the increase-detail overshoot, and the harder of the
+    // two to correct: manifold-3d's simplify() collapses toward a deviation
+    // tolerance whose triangle count scales with the inverse *first* power
+    // of that tolerance, not the inverse square that governs edge length on
+    // the refine path. An earlier version scaled the simplify correction by
+    // sqrt(ratio) — the refine exponent — which under-corrects by a square
+    // root each round, so a Max→Med-sized reduction stalled around
+    // 0.6× of target after all attempts (measured 12,656 vs. 20,000 here)
+    // instead of converging. SIMPLIFY_CORRECTION_EXPONENT fixes this.
+    const original = sphere(50, { widthSegments: 240, heightSegments: 160 }); // ~76k triangles
+    const target = 20_000; // ~3.8× reduction — far enough to expose the bad correction
+
+    const result = await remesh(original, target);
+
+    expect(result.triangleCount).toBeLessThan(original.triangleCount);
+    expect(withinTolerance(result.triangleCount, target, 0.15)).toBe(true);
+    expect(checkManifold(result).ok).toBe(true);
+  }, 15_000);
+
   it('does not compound overshoot across a repeated remesh of an already-remeshed mesh', async () => {
     // The worse of the two originally-observed cases: remeshing the
     // *output* of a previous remesh (not the pristine original),
