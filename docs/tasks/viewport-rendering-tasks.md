@@ -122,7 +122,8 @@ The Node-testable core of this layer, importing no Three.js/DOM. `math/spherical
 
 ## Task: 07 — Pointer router: classifyMode + camera/sculpt event routing
 
-**Layer**: Viewport · **Estimate**: 3hr · **Depends on**: 05, 06 · **Status**: PENDING
+**Layer**: Viewport · **Estimate**: 3hr · **Depends on**: 05, 06 · **Status**: DONE
+**Completed**: 2026-07-23
 
 ### What to build
 `src/viewport/pointer-router.ts`: the pure `classifyMode(gesture, hitMesh)` decision function (Node-tested), plus the event wiring that classifies the gesture on pointer-down (1-finger vs 2-finger vs pinch vs pan modifier; mouse left/right/middle + scroll; pinch as `wheel`+`ctrlKey` on trackpads) and routes: **sculpt** → `engine.beginStroke/updateStroke(hit|null)/endStroke`; **camera** → the Task 05 controller. Mode is fixed at pointer-down for the whole gesture. Implements the full FR-14 gesture table and the FR-15 "always orbit" (2-finger / right-drag) over the model.

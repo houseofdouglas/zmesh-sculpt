@@ -4,6 +4,7 @@ import { createScene, type ViewportScene } from './scene';
 import { createMeshSync, type MeshSync } from './mesh-sync';
 import { CameraController } from './camera-controller';
 import { computeGrabWorldDelta, pickSurfaceHit, pixelToNdc } from './picking';
+import { PointerRouter } from './pointer-router';
 import type { SculptEngine } from '../engine/sculpt-engine';
 import type { SurfaceHit } from '../engine/stroke';
 import type { Vec3 } from './math/vec3';
@@ -28,6 +29,7 @@ export class Viewport {
   private renderer: NonNullable<RendererInitResult['renderer']> | undefined;
   private viewportScene: ViewportScene | undefined;
   private cameraController: CameraController | undefined;
+  private pointerRouter: PointerRouter | undefined;
   private placeholderActive = true;
   private meshSync: MeshSync | undefined;
   private meshSyncUnsubscribe: (() => void) | undefined;
@@ -90,6 +92,21 @@ export class Viewport {
     this.cameraController = new CameraController(this.viewportScene.camera, {
       radius: this.viewportScene.initialCameraDistanceMm,
     });
+
+    // FR-11 through FR-15: routes pointer/wheel gestures to either the
+    // engine's stroke lifecycle or the camera controller. `getEngine`/
+    // `pick` are lazy closures rather than snapshotted values, since
+    // both `this.attachedEngine` and what `this.pick` resolves against
+    // can change after this constructs (attachEngine hasn't necessarily
+    // been called yet).
+    this.pointerRouter = new PointerRouter({
+      canvas: this.canvas,
+      cameraController: this.cameraController,
+      getEngine: () => this.attachedEngine,
+      pick: (pixelX, pixelY) => this.pick(pixelX, pixelY),
+      getViewportHeightPx: () => this.container.clientHeight,
+    });
+
     this.resize();
 
     // A ResizeObserver on the container (not a window 'resize' listener)
@@ -220,6 +237,9 @@ export class Viewport {
     }
     this.resizeObserver?.disconnect();
     this.resizeObserver = undefined;
+
+    this.pointerRouter?.dispose();
+    this.pointerRouter = undefined;
 
     this.meshSyncUnsubscribe?.();
     this.meshSyncUnsubscribe = undefined;
