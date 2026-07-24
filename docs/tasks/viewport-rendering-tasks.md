@@ -11,7 +11,8 @@ Layer: all Viewport (`src/viewport/`), consuming the `SculptEngine` API from scu
 
 ## Task: 01 — Install three + renderer init, capability detection, dev harness
 
-**Layer**: Config/Viewport · **Estimate**: 2hr · **Depends on**: none · **Status**: PENDING
+**Layer**: Config/Viewport · **Estimate**: 2hr · **Depends on**: none · **Status**: DONE
+**Completed**: 2026-07-23
 
 ### What to build
 Add the `three` dependency (and `@webgpu/types` if needed for `navigator.gpu` capability typing). Create `src/viewport/renderer.ts`: async init of Three.js `WebGPURenderer` (from `three/webgpu`) that uses WebGPU when available and falls back to WebGL2, returning `ViewportInitResult` (`{ ok, backend }` or `{ ok:false, reason }` when neither is available). Create a minimal `src/viewport/viewport.ts` shell (`new Viewport(container)`, `init()`, `dispose()`) that mounts a canvas and clears it to a solid color. Wire a throwaway harness in `src/App.tsx` that mounts a Viewport and shows the detected backend.

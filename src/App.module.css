@@ -1,7 +1,5 @@
 .viewport {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  position: relative;
   width: 100vw;
   height: 100vh;
   background: #1a1a1a;
@@ -10,9 +8,15 @@
     -apple-system,
     system-ui,
     sans-serif;
+  overflow: hidden;
 }
 
 .placeholder {
+  position: absolute;
+  top: 12px;
+  left: 12px;
   font-size: 0.9rem;
   letter-spacing: 0.02em;
+  pointer-events: none;
+  margin: 0;
 }
