@@ -67,7 +67,8 @@ The Node-testable core of this layer, importing no Three.js/DOM. `math/spherical
 
 ## Task: 04 — Mesh-sync: SculptMesh → geometry, partial upload, topology rebuild
 
-**Layer**: Viewport · **Estimate**: 3hr · **Depends on**: 02, 03 · **Status**: PENDING
+**Layer**: Viewport · **Estimate**: 3hr · **Depends on**: 02, 03 · **Status**: DONE
+**Completed**: 2026-07-23
 
 ### What to build
 `src/viewport/mesh-sync.ts`: build a `BufferGeometry` backed by the engine's `positions`/`normals`/`indices` typed arrays; on a `DirtyRegion`, upload only the changed vertex range via `BufferAttribute` update-range (using `vertexRangeToAttributeRange` from Task 02); on a full-mesh dirty region (remesh/new mesh), rebuild geometry with new buffers/counts. Guard against a stale range beyond the current buffer. Update the harness to construct a `SculptEngine`, render its real default sphere, and reflect a scripted deformation.

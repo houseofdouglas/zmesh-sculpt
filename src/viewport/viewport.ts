@@ -1,5 +1,7 @@
 import { initRenderer, type RendererInitResult, type ViewportInitResult } from './renderer';
 import { createScene, type ViewportScene } from './scene';
+import { createMeshSync, type MeshSync } from './mesh-sync';
+import type { SculptEngine } from '../engine/sculpt-engine';
 
 export type { ViewportInitResult, RenderBackend } from './renderer';
 
@@ -20,9 +22,14 @@ export class Viewport {
   private readonly canvas: HTMLCanvasElement;
   private renderer: NonNullable<RendererInitResult['renderer']> | undefined;
   private viewportScene: ViewportScene | undefined;
+  private placeholderActive = true;
+  private meshSync: MeshSync | undefined;
+  private meshSyncUnsubscribe: (() => void) | undefined;
   private resizeObserver: ResizeObserver | undefined;
   private rafHandle: number | null = null;
   private disposed = false;
+  /** Set only while `initRenderer` is in flight — see `dispose()`'s canvas-removal guard. */
+  private pendingRendererInit: Promise<RendererInitResult> | undefined;
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -40,15 +47,20 @@ export class Viewport {
 
   /** Async: initializes the renderer (WebGPU, falling back to WebGL2), builds the scene, and starts the render loop. */
   async init(): Promise<ViewportInitResult> {
-    const result = await initRenderer(this.canvas);
+    const pending = initRenderer(this.canvas);
+    this.pendingRendererInit = pending;
+    const result = await pending;
+    this.pendingRendererInit = undefined;
 
-    // `dispose()` can run while this `await` is in flight (e.g. React
-    // StrictMode's dev-mode mount -> cleanup -> mount double-invoke,
-    // which disposes the first instance before its init() promise ever
-    // settles). Without this guard, a disposed instance would still wire
-    // up a renderer/scene/resize-observer/render-loop against a canvas
-    // that's already been removed from the DOM — which is exactly what
-    // produced zero-size WebGPU texture validation errors in practice.
+    // `dispose()` can run while the above `await` is in flight (e.g.
+    // React StrictMode's dev-mode mount -> cleanup -> mount
+    // double-invoke, which disposes the first instance before its
+    // init() promise ever settles). Without this guard, a disposed
+    // instance would still wire up a renderer/scene/resize-observer/
+    // render-loop against a canvas that's already been removed from the
+    // DOM. `dispose()` itself additionally defers the canvas's actual
+    // removal until this same in-flight call settles — see there for
+    // why: it's not enough to just bail out *here*.
     if (this.disposed) {
       result.renderer?.dispose();
       return { ok: false, reason: 'viewport was disposed before init() completed' };
@@ -76,6 +88,35 @@ export class Viewport {
   }
 
   /**
+   * Wires a `SculptEngine`'s mesh into the scene (FR-5/6/7): builds a
+   * `MeshSync` from the engine's current mesh, replaces the Task 03
+   * placeholder with it, and subscribes to `onChange` so every
+   * subsequent stamp/stroke/remesh updates the GPU buffers.
+   *
+   * Basic version — this task's own scope. Task 09 completes the full
+   * `attachEngine` contract (unsubscribing a *previous* engine when a
+   * second is attached); calling this twice today would leak the first
+   * `MeshSync`/subscription rather than replacing them cleanly.
+   */
+  attachEngine(engine: SculptEngine): void {
+    if (!this.viewportScene) {
+      return; // init() hasn't completed yet — nothing to attach to
+    }
+
+    if (this.placeholderActive) {
+      this.viewportScene.scene.remove(this.viewportScene.placeholder);
+      this.viewportScene.placeholder.geometry.dispose();
+      this.placeholderActive = false;
+    }
+
+    this.meshSync = createMeshSync(this.viewportScene.clayMaterial, engine.getMesh());
+    this.viewportScene.scene.add(this.meshSync.mesh);
+    this.meshSyncUnsubscribe = engine.onChange((region) => {
+      this.meshSync?.sync(engine.getMesh(), region);
+    });
+  }
+
+  /**
    * Stops the render loop and releases the renderer, scene resources,
    * observers, and canvas. Idempotent: safe to call more than once, or
    * before `init()`.
@@ -93,13 +134,36 @@ export class Viewport {
     this.resizeObserver?.disconnect();
     this.resizeObserver = undefined;
 
-    this.viewportScene?.placeholder.geometry.dispose();
+    this.meshSyncUnsubscribe?.();
+    this.meshSyncUnsubscribe = undefined;
+    this.meshSync?.dispose();
+    this.meshSync = undefined;
+
+    if (this.placeholderActive) {
+      this.viewportScene?.placeholder.geometry.dispose();
+    }
     this.viewportScene?.clayMaterial.dispose();
     this.viewportScene = undefined;
 
     this.renderer?.dispose();
     this.renderer = undefined;
-    this.canvas.remove();
+
+    if (this.pendingRendererInit) {
+      // `initRenderer` is still awaiting `renderer.init()` internally,
+      // which can still be mid-way through configuring a WebGPU context
+      // against `this.canvas` (querying its size to set up the
+      // swapchain). Detaching the canvas from the DOM right now would
+      // do so *while that's happening* — a detached element's size
+      // collapses to 0 immediately — which is exactly what produced a
+      // cascade of "zero-size texture" WebGPU validation errors in
+      // practice. Deferring removal until that call has fully settled
+      // (success or failure, hence `finally`) avoids the race entirely;
+      // the `this.disposed` check inside `init()` still guarantees
+      // nothing gets wired up once it does.
+      void this.pendingRendererInit.finally(() => this.canvas.remove());
+    } else {
+      this.canvas.remove();
+    }
   }
 
   private resize(): void {
@@ -107,6 +171,20 @@ export class Viewport {
       return;
     }
     const { clientWidth, clientHeight } = this.container;
+    // The container can genuinely report 0x0 on the very first resize
+    // pass (both the manual call here at the end of init(), and
+    // ResizeObserver's own first callback) — the browser hasn't finished
+    // laying out the container yet at that early point, even though it
+    // settles to the real size moments later. Configuring the renderer's
+    // swapchain at 0x0 is what produced a cascade of WebGPU "zero-size
+    // texture" validation errors in practice; skipping the resize
+    // entirely here (rather than passing the degenerate size through)
+    // avoids that — a later resize (the real one) corrects the size
+    // once layout has actually happened.
+    if (clientWidth === 0 || clientHeight === 0) {
+      return;
+    }
+
     this.renderer.setPixelRatio(window.devicePixelRatio);
     this.renderer.setSize(clientWidth, clientHeight, false);
 
@@ -121,9 +199,11 @@ export class Viewport {
       if (this.disposed || !this.renderer) {
         return;
       }
-      if (this.viewportScene) {
+      // Defense in depth alongside the `resize()` guard above: never
+      // draw with a degenerate container size.
+      if (this.viewportScene && this.container.clientWidth > 0 && this.container.clientHeight > 0) {
         this.renderer.render(this.viewportScene.scene, this.viewportScene.camera);
-      } else {
+      } else if (!this.viewportScene) {
         this.renderer.clear();
       }
       this.rafHandle = requestAnimationFrame(loop);

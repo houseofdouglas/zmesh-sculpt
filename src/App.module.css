@@ -20,3 +20,27 @@
   pointer-events: none;
   margin: 0;
 }
+
+/* Throwaway dev-harness controls (viewport-rendering spec); the UI spec replaces this file. */
+.devPanel {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.devPanel button {
+  font-size: 0.85rem;
+  padding: 6px 10px;
+  background: #2a2a2a;
+  color: #ddd;
+  border: 1px solid #444;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.devPanel button:hover {
+  background: #3a3a3a;
+}
