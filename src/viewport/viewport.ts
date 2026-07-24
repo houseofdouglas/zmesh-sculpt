@@ -18,12 +18,10 @@ const CLEAR_COLOR = 0x1a1a1a;
 
 /**
  * The object the UI layer mounts, configures, and disposes (spec's Data
- * Model / Interfaces section). This task establishes the lifecycle shell:
- * mount a canvas, init the renderer, run/stop a render loop, and tear
- * down cleanly. Scene contents (Task 03), mesh sync (Task 04), camera
- * (Task 05), input (Task 07), and brush display (Task 08) are added by
- * later tasks in this plan — this class grows incrementally, the same
- * way `SculptEngine` did across the engine spec's tasks.
+ * Model / Interfaces section): mount a canvas, init the renderer (Task
+ * 01), scene/camera/mesh-sync/picking/input/cursor (Tasks 03-08), and a
+ * rigorous, idempotent `init()`/`dispose()` plus `onFrameStats` (Task 09)
+ * completing the facade.
  */
 export class Viewport {
   private readonly container: HTMLElement;
@@ -41,6 +39,9 @@ export class Viewport {
   private resizeObserver: ResizeObserver | undefined;
   private rafHandle: number | null = null;
   private disposed = false;
+  private readonly frameStatsListeners = new Set<(stats: { fps: number }) => void>();
+  private frameCountSinceReport = 0;
+  private lastFrameStatsReportTime = 0;
   /** Set only while `initRenderer` is in flight — see `dispose()`'s canvas-removal guard. */
   private pendingRendererInit: Promise<RendererInitResult> | undefined;
 
@@ -130,18 +131,27 @@ export class Viewport {
 
   /**
    * Wires a `SculptEngine`'s mesh into the scene (FR-5/6/7): builds a
-   * `MeshSync` from the engine's current mesh, replaces the Task 03
-   * placeholder with it, and subscribes to `onChange` so every
+   * `MeshSync` from the engine's current mesh, replaces whatever was
+   * shown before (the Task 03 placeholder, or a previously attached
+   * engine's mesh) with it, and subscribes to `onChange` so every
    * subsequent stamp/stroke/remesh updates the GPU buffers.
    *
-   * Basic version — this task's own scope. Task 09 completes the full
-   * `attachEngine` contract (unsubscribing a *previous* engine when a
-   * second is attached); calling this twice today would leak the first
-   * `MeshSync`/subscription rather than replacing them cleanly.
+   * Calling this again with a different engine cleanly unwinds the
+   * previous attachment first — unsubscribing its `onChange` listener
+   * and disposing/removing its `MeshSync` — so replacing the engine
+   * never leaks the old subscription or GPU geometry.
    */
   attachEngine(engine: SculptEngine): void {
     if (!this.viewportScene) {
       return; // init() hasn't completed yet — nothing to attach to
+    }
+
+    this.meshSyncUnsubscribe?.();
+    this.meshSyncUnsubscribe = undefined;
+    if (this.meshSync) {
+      this.viewportScene.scene.remove(this.meshSync.mesh);
+      this.meshSync.dispose();
+      this.meshSync = undefined;
     }
 
     if (this.placeholderActive) {
@@ -158,12 +168,12 @@ export class Viewport {
 
     this.attachedEngine = engine;
     // FR-10: frame on mount / attach (this call) and on a new/loaded
-    // mesh — not on a remesh. There's no re-attach or reload path wired
-    // up yet (both are later-task scope: reframing on a *subsequent*
-    // loadMesh/newFromPrimitive on an already-attached engine needs a
-    // signal this basic onChange-only wiring can't yet distinguish from
-    // a remesh, since both currently produce an identical full-mesh
-    // DirtyRegion — left open for whoever completes that distinction).
+    // mesh — not on a remesh. Reframing on a *subsequent*
+    // loadMesh/newFromPrimitive on an already-attached engine (as
+    // opposed to a fresh attachEngine call) is still open: both that and
+    // a remesh currently produce an identical full-mesh DirtyRegion from
+    // this onChange-only wiring's point of view, with no signal to tell
+    // them apart — left for whoever adds that distinction.
     this.frameModel();
   }
 
@@ -237,6 +247,19 @@ export class Viewport {
   }
 
   /**
+   * Reports sustained frame rate (additive to the spec's drafted
+   * interface, same class of small extension as the engine's own
+   * `onRemeshProgress`): subscribes to a ~1×/second fps figure computed
+   * from the real render loop, returning an unsubscribe function.
+   */
+  onFrameStats(cb: (stats: { fps: number }) => void): () => void {
+    this.frameStatsListeners.add(cb);
+    return () => {
+      this.frameStatsListeners.delete(cb);
+    };
+  }
+
+  /**
    * Stops the render loop and releases the renderer, scene resources,
    * observers, and canvas. Idempotent: safe to call more than once, or
    * before `init()`.
@@ -253,6 +276,7 @@ export class Viewport {
     }
     this.resizeObserver?.disconnect();
     this.resizeObserver = undefined;
+    this.frameStatsListeners.clear();
 
     this.pointerRouter?.dispose();
     this.pointerRouter = undefined;
@@ -323,6 +347,7 @@ export class Viewport {
   }
 
   private startLoop(): void {
+    this.lastFrameStatsReportTime = performance.now();
     const loop = (): void => {
       if (this.disposed || !this.renderer) {
         return;
@@ -334,9 +359,28 @@ export class Viewport {
       } else if (!this.viewportScene) {
         this.renderer.clear();
       }
+      this.reportFrameStats();
       this.rafHandle = requestAnimationFrame(loop);
     };
     this.rafHandle = requestAnimationFrame(loop);
+  }
+
+  /** Counts this frame toward a ~1x/second fps figure (`onFrameStats`), computed from the real render loop's timing. */
+  private reportFrameStats(): void {
+    if (this.frameStatsListeners.size === 0) {
+      return;
+    }
+    this.frameCountSinceReport++;
+    const now = performance.now();
+    const elapsedMs = now - this.lastFrameStatsReportTime;
+    if (elapsedMs >= 1000) {
+      const fps = (this.frameCountSinceReport * 1000) / elapsedMs;
+      for (const cb of this.frameStatsListeners) {
+        cb({ fps });
+      }
+      this.frameCountSinceReport = 0;
+      this.lastFrameStatsReportTime = now;
+    }
   }
 }
 

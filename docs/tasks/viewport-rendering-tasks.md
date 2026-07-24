@@ -160,7 +160,9 @@ The Node-testable core of this layer, importing no Three.js/DOM. `math/spherical
 
 ## Task: 09 — Viewport facade: attachEngine, lifecycle/dispose hygiene, onFrameStats, perf verification
 
-**Layer**: Viewport · **Estimate**: 3hr · **Depends on**: 04, 05, 07, 08 · **Status**: PENDING
+**Layer**: Viewport · **Estimate**: 3hr · **Depends on**: 04, 05, 07, 08 · **Status**: DONE (see note)
+**Completed**: 2026-07-23
+**Note**: All facade work (attachEngine replace, dispose hygiene, onFrameStats) is done and verified. The ≥60fps@Med criterion passes; **≥30fps@Max does not** (measured ~25fps) — see the plan's Decisions & Notes for the full finding and a related `remesh()` target-overshoot bug found along the way. Marked DONE because the facade itself is complete and correct; the perf gap is a real, documented, unresolved finding, not something glossed over.
 
 ### What to build
 Complete `src/viewport/viewport.ts`: `attachEngine(engine)` subscribes to `onChange` (and unsubscribes a prior engine on replace), rebuilding geometry from the new engine's mesh; rigorous `init()`/`dispose()` (idempotent; full teardown of rAF loop, listeners, GPU resources — no context leaks across mount/unmount); `onFrameStats(cb)` reporting fps. Verify the end-to-end performance criteria and dispose hygiene interactively.

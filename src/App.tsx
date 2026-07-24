@@ -27,6 +27,21 @@ const ZOOM_IN_FACTOR = 0.85;
 const ZOOM_OUT_FACTOR = 1 / ZOOM_IN_FACTOR;
 /** mm change per click for the cursor-radius demo buttons. */
 const CURSOR_RADIUS_STEP_MM = 2;
+/** Stamps in the Task 09 perf-test's scripted continuous stroke. */
+const PERF_TEST_STAMP_COUNT = 90;
+
+/** N points along a quarter-circle arc of the given radius, with matching outward normals — a scripted "continuous drag" path. */
+function generateArcPath(radiusMm: number, count: number): { point: Vec3; normal: Vec3 }[] {
+  const path: { point: Vec3; normal: Vec3 }[] = [];
+  for (let i = 0; i < count; i++) {
+    const theta = (i / (count - 1)) * (Math.PI / 2);
+    const x = radiusMm * Math.cos(theta);
+    const y = radiusMm * Math.sin(theta);
+    const len = Math.sqrt(x * x + y * y);
+    path.push({ point: [x, y, 0], normal: [x / len, y / len, 0] });
+  }
+  return path;
+}
 
 export function App(): JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -35,7 +50,19 @@ export function App(): JSX.Element {
   const hitReadoutRef = useRef<HTMLParagraphElement>(null);
   const lastHitPointRef = useRef<Vec3 | null>(null);
   const brushDisplayRef = useRef<BrushDisplayConfig>({ cursorRadiusMm: 5, symmetryX: true });
+  const renderCountRef = useRef(0);
   const [status, setStatus] = useState<ViewportInitResult | null>(null);
+
+  // Task 09 verification: React must never re-render per frame/stroke.
+  // A plain useEffect with no dependency array runs after every commit
+  // (not merely every render *attempt*, which Strict Mode can double up
+  // on its own) — logging the count here makes "did an extra commit
+  // happen" directly checkable across a scripted stroke or perf test,
+  // both of which drive the engine/viewport entirely outside React state.
+  useEffect(() => {
+    renderCountRef.current += 1;
+    console.log(`[render] App committed ${renderCountRef.current} time(s) total`);
+  });
 
   useEffect(() => {
     const container = containerRef.current;
@@ -137,6 +164,116 @@ export function App(): JSX.Element {
     console.log(`[brushDisplay] symmetryX=${next.symmetryX}`);
   }
 
+  /**
+   * Task 09 perf verification: remeshes to `level`, then runs a scripted
+   * continuous Draw stroke paced one stamp per `requestAnimationFrame` —
+   * so the browser's real render loop runs normally alongside it, the
+   * same way a real drag (paced by real pointermove events) would — and
+   * measures the actual wall-clock time between those frames via
+   * `onFrameStats`, which is exactly the end-to-end (CPU stamp + render)
+   * cost the spec's ≥60fps(Med)/≥30fps(Max) criterion is about.
+   */
+  async function runPerfTest(level: 'med' | 'max'): Promise<void> {
+    const engine = engineRef.current;
+    const viewport = viewportRef.current;
+    if (!engine || !viewport) {
+      return;
+    }
+
+    console.log(`[perf] remeshing to ${level}…`);
+    try {
+      await engine.setDetail(level);
+    } catch (err) {
+      console.error(`[perf] setDetail(${level}) rejected:`, err);
+      return;
+    }
+    const mesh = engine.getMesh();
+    const radiusMm = (mesh.bounds.max[0] - mesh.bounds.min[0]) / 2;
+    console.log(`[perf] ${level}: ${mesh.triangleCount.toLocaleString()} triangles, radius ${radiusMm.toFixed(1)}mm`);
+
+    const fpsReadings: number[] = [];
+    const unsubscribe = viewport.onFrameStats(({ fps }) => fpsReadings.push(fps));
+
+    const path = generateArcPath(radiusMm, PERF_TEST_STAMP_COUNT);
+    engine.setBrush('draw');
+    engine.setBrushSize(radiusMm * 0.1);
+    engine.setBrushStrength(0.3);
+    engine.beginStroke(path[0]!);
+
+    await new Promise<void>((resolve) => {
+      let index = 0;
+      function step(): void {
+        index++;
+        if (index < path.length) {
+          engine!.updateStroke(path[index]!);
+          requestAnimationFrame(step);
+        } else {
+          engine!.endStroke();
+          resolve();
+        }
+      }
+      requestAnimationFrame(step);
+    });
+
+    unsubscribe();
+    const fpsSummary = fpsReadings.length > 0 ? fpsReadings.map((f) => f.toFixed(1)).join(', ') : '(stroke finished within one fps sampling window)';
+    console.log(`[perf] ${level}: onFrameStats readings during the stroke: ${fpsSummary}`);
+  }
+
+  /**
+   * Task 09 verification: attachEngine on a second engine must
+   * unsubscribe the first (a stroke on the old engine afterward must
+   * NOT reach the viewport) and render the new engine's mesh.
+   */
+  function testAttachEngineReplace(): void {
+    const viewport = viewportRef.current;
+    const firstEngine = engineRef.current;
+    if (!viewport || !firstEngine) {
+      return;
+    }
+    const secondEngine = new SculptEngine();
+    secondEngine.newFromPrimitive('block'); // visibly different from the sphere, so a render change is obvious
+    viewport.attachEngine(secondEngine);
+    engineRef.current = secondEngine;
+
+    // If the old engine's onChange were still subscribed, this stroke
+    // would throw trying to sync against the new (differently-shaped)
+    // mesh, or otherwise visibly corrupt the render.
+    firstEngine.setBrush('draw');
+    firstEngine.setBrushSize(12);
+    firstEngine.setBrushStrength(1);
+    firstEngine.beginStroke({ point: [0, 25, 0], normal: [0, 1, 0] });
+    firstEngine.endStroke();
+    console.log('[attachEngineReplace] attached a block-shaped second engine; stroked the detached first engine with no visible effect expected');
+  }
+
+  /**
+   * Task 09 dispose-hygiene verification: repeatedly disposes the
+   * current Viewport and mounts a fresh one against the same container,
+   * re-attaching the same engine each time — simulating repeated
+   * mount/unmount cycles within one page session (rather than only ever
+   * testing a single fresh page load) to check for accumulating console
+   * warnings/errors.
+   */
+  async function stressDisposeCycles(): Promise<void> {
+    const engine = engineRef.current;
+    const container = containerRef.current;
+    if (!engine || !container) {
+      return;
+    }
+    for (let i = 0; i < 5; i++) {
+      viewportRef.current?.dispose();
+      const fresh = new Viewport(container);
+      viewportRef.current = fresh;
+      const result = await fresh.init();
+      if (result.ok) {
+        fresh.attachEngine(engine);
+      }
+      console.log(`[disposeStress] cycle ${i + 1}/5: init ok=${result.ok}`);
+    }
+    console.log('[disposeStress] completed 5 mount/unmount cycles — check for accumulating warnings');
+  }
+
   return (
     <div className={styles.viewport} ref={containerRef} onClick={handleContainerClick}>
       {status === null && <p className={styles.placeholder}>Initializing renderer…</p>}
@@ -194,6 +331,18 @@ export function App(): JSX.Element {
             </button>
             <button type="button" onClick={toggleSymmetry}>
               Toggle symmetry
+            </button>
+            <button type="button" onClick={() => void runPerfTest('med')}>
+              Perf test (Med)
+            </button>
+            <button type="button" onClick={() => void runPerfTest('max')}>
+              Perf test (Max)
+            </button>
+            <button type="button" onClick={() => void stressDisposeCycles()}>
+              Stress dispose (5x)
+            </button>
+            <button type="button" onClick={testAttachEngineReplace}>
+              Test attachEngine replace
             </button>
           </div>
         </>
