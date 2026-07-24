@@ -1,12 +1,47 @@
 import { describe, it, expect, vi } from 'vitest';
 import { sphere } from '../mesh/primitives';
 import { checkManifold } from '../validate/manifold';
+import type { SculptMesh } from '../mesh/sculpt-mesh';
 import { remesh, RemeshValidationError } from './remesh';
 
 /** How close `actual` must land to `target` (as a fraction) for the correction-loop tests below. */
 function withinTolerance(actual: number, target: number, fraction: number): boolean {
   const ratio = actual / target;
   return ratio >= 1 - fraction && ratio <= 1 + fraction;
+}
+
+/**
+ * Max allowed silhouette deviation, as a fraction of the sphere's radius.
+ * The refine path's worst case is the *source* tessellation's sagitta — a
+ * subdivision point lands on a flat coarse face, slightly inside the true
+ * sphere — measured here at ~1.14mm (about 4.5% of the 25mm radius) for the
+ * coarse source; 8% gives robust margin over that (resilient to manifold-3d
+ * point-placement changes across versions) while still catching any real
+ * dent or bulge a bounding-box check would miss. The simplify path stays
+ * essentially exact (measured ~1e-6mm).
+ */
+const SILHOUETTE_TOLERANCE_FRACTION = 0.08;
+
+/**
+ * Max deviation of any vertex from the analytic sphere surface of `radius`
+ * centered at the origin — a true one-sided Hausdorff distance from the
+ * remeshed vertex set to the *original surface* (exact here, with no
+ * vertex-set proxy, precisely because the source shape is an analytic
+ * sphere). This is a much tighter silhouette-preservation check than a
+ * bounding-box comparison: a vertex pushed inward (a dent) or outward (a
+ * bulge) shows up directly as `|distance-from-center - radius|`, even when
+ * it stays comfortably within the overall bounds a bbox check looks at.
+ */
+function maxDeviationFromSphere(mesh: SculptMesh, radius: number): number {
+  let maxDev = 0;
+  for (let i = 0; i < mesh.vertexCount; i++) {
+    const x = mesh.positions[i * 3]!;
+    const y = mesh.positions[i * 3 + 1]!;
+    const z = mesh.positions[i * 3 + 2]!;
+    const r = Math.sqrt(x * x + y * y + z * z);
+    maxDev = Math.max(maxDev, Math.abs(r - radius));
+  }
+  return maxDev;
 }
 
 describe('remesh', () => {
@@ -18,6 +53,10 @@ describe('remesh', () => {
 
     expect(result.triangleCount).toBeGreaterThan(original.triangleCount);
     expect(checkManifold(result).ok).toBe(true);
+    // Silhouette preserved: every vertex stays within tolerance of the
+    // original sphere surface (a true point-to-surface Hausdorff distance,
+    // not the looser bounding-box proxy — see maxDeviationFromSphere).
+    expect(maxDeviationFromSphere(result, 25)).toBeLessThanOrEqual(25 * SILHOUETTE_TOLERANCE_FRACTION);
     expect(result.bounds.min[0]).toBeCloseTo(-25, 0);
     expect(result.bounds.max[0]).toBeCloseTo(25, 0);
   });
@@ -30,6 +69,9 @@ describe('remesh', () => {
 
     expect(result.triangleCount).toBeLessThan(original.triangleCount);
     expect(checkManifold(result).ok).toBe(true);
+    // Silhouette preserved (see the increase-resolution test); simplify
+    // keeps its retained vertices essentially exactly on the sphere.
+    expect(maxDeviationFromSphere(result, 25)).toBeLessThanOrEqual(25 * SILHOUETTE_TOLERANCE_FRACTION);
     expect(result.bounds.min[0]).toBeCloseTo(-25, 0);
     expect(result.bounds.max[0]).toBeCloseTo(25, 0);
   });

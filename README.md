@@ -53,7 +53,7 @@ This project follows a docs-driven SDLC: specs in [`docs/specs/`](docs/specs/) a
 
 ## Current status
 
-- **sculpt-engine-core** — complete (16/16 tasks); acceptance PARTIAL (19/23 criteria; 4 non-blocking verification gaps).
+- **sculpt-engine-core** — complete (16/16 tasks); acceptance **PASS (23/23)** — the four original verification gaps (perf re-measurement through the real engine, Worker-in-browser, coverage tooling, silhouette metric) were all closed 2026-07-24.
 - **viewport-rendering** — complete (9/9 tasks); acceptance PASS. Both gaps found during its performance pass have since been fixed: the ≥60fps-Med / ≥30fps-Max target now holds end-to-end (~61fps at Max detail on the M1 baseline, after replacing an O(triangleCount) per-stamp normal scan with a precomputed vertex→triangle incidence structure), and the remesh triangle-count targeting no longer overshoots on repeated remeshes (iterative correction loop).
 - **Not started**: the real UI (toolbars/panels replacing the dev harness), STL/3MF export, and `.zmesh` project persistence.
 

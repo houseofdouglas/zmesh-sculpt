@@ -1,13 +1,13 @@
 # Acceptance Report: sculpt-engine-core
 
 Date: 2026-07-23
-Result: **PARTIAL**
+Result: **PARTIAL** (2026-07-23) → **PASS** (all 4 gaps closed 2026-07-24 — see Addendum)
 
 ## Summary
 
-23 criteria checked (20 acceptance-criteria checkboxes + 3 relevant NFRs). **19 passing, 4 partial, 0 failing.** All gaps are performance/verification gaps, not functional ones — every functional behavior the spec asks for is implemented and covered by a passing test. The gaps are: three performance criteria measured against a pre-facade benchmark rather than the current, real engine configuration; the Web Worker dispatch path (correctly, honestly undocumented as untestable in this project's Node-based test environment) not yet verified in a browser; and no line-coverage tooling configured to confirm the constitution's 80%-on-core target numerically.
+23 criteria checked (20 acceptance-criteria checkboxes + 3 relevant NFRs). As of 2026-07-23: **19 passing, 4 partial, 0 failing.** All gaps were performance/verification gaps, not functional ones — every functional behavior the spec asks for is implemented and covered by a passing test. The gaps were: three performance criteria measured against a pre-facade benchmark rather than the current, real engine configuration; the Web Worker dispatch path (correctly, honestly undocumented as untestable in this project's Node-based test environment) not yet verified in a browser; and no line-coverage tooling configured to confirm the constitution's 80%-on-core target numerically.
 
-None of these block moving on to the next spec — they're worth closing before relying on the specific performance numbers in production, not before continuing development.
+**All four have since been closed (2026-07-24) — see the Addendum at the bottom.** The original per-criterion detail below is preserved as the point-in-time 2026-07-23 record; the ⚠️ PARTIAL entries are superseded by the Addendum.
 
 ## Criteria Results
 
@@ -111,3 +111,21 @@ Nothing here blocks moving to the next spec (Viewport & Rendering is the natural
 2. Verify Worker-based remesh dispatch interactively once a browser-loadable app exists.
 3. Add coverage tooling and confirm the 80%-on-core target.
 4. Either compute a real Hausdorff/nearest-point distance for the silhouette-preservation test, or update the spec to describe the bounding-box proxy actually in use.
+
+---
+
+## Addendum — 2026-07-24: all four PARTIALs closed → full PASS
+
+All four follow-up items above were completed. The spec now passes 23/23. (Two of them were substantially enabled by the intervening viewport-rendering spec, which gave the engine a real browser to run in and surfaced the performance work that made the numbers dramatically better.)
+
+**1. The three performance PARTIALs → PASS.** The original Q-01 numbers were measured against the pre-facade, no-symmetry core pipeline. A new benchmark, `npm run bench:facade` (`src/engine/__bench__/facade-bench.ts`), drives a continuous Draw stroke through the real `SculptEngine` facade with X-mirror symmetry ON — the true as-shipped path — and separately during the viewport-rendering fps work the real end-to-end (CPU+render) rate was measured in a live browser. Both comfortably pass:
+   - **≥60fps @ Med**: as-shipped CPU cost at 100k triangles is 0.324ms/sample (3,085fps CPU-side); end-to-end in-browser at Med (~96k tri) sustained 60.9fps.
+   - **≥30fps @ Max**: as-shipped CPU cost at 500k is 1.185ms/sample (844fps CPU-side); end-to-end in-browser at Max (~550k tri) sustained ~61fps.
+   - **≤16ms single-stamp @ Med**: the as-shipped per-sample latency (symmetry on) is ~0.32ms at Med — far under 16ms.
+   - A prerequisite for these numbers was fixing the O(triangleCount) per-stamp normal scan (`findTrianglesTouchingVertices`) that dominated the original Q-01 cost — replaced by a precomputed vertex→triangle incidence structure (`src/core/mesh/incidence.ts`). See the 2026-07-24 addendum in `docs/design/q01-triangle-budget-findings.md` for the full re-measurement. **Reframing**: the CPU is no longer the binding constraint at Max; end-to-end fps there is GPU-render-bound. Max = 500,000 still stands as the right clamp, now for a GPU (not CPU) reason.
+
+**2. Worker remesh dispatch in a browser → PASS.** This was verified during viewport-rendering Task 09: `setDetail` ran through the real `createWorkerRemeshRunner` in a live browser (that verification is in fact how a severe WASM-in-worker loading bug was found and fixed — `vite.config.ts`'s `optimizeDeps.exclude` / `worker.format`). `setDetail('med')` completed off the main thread in ~188ms, matching a pure-Node reproduction. Full detail in `docs/plans/active/viewport-rendering-plan.md`'s Task 09 notes.
+
+**3. 80%-on-core coverage → PASS.** `@vitest/coverage-v8` + a `test:coverage` script now measure it, scoped to `src/core/` with an enforced 80% threshold (lines/functions/statements/branches). First measured result: **98.09% lines / 94.05% branches / 100% functions** — every core module over 80%.
+
+**4. Silhouette-preservation metric → PASS.** The remesh tests' loose bounding-box proxy is replaced (augmented) by a true point-to-surface Hausdorff distance: `maxDeviationFromSphere` in `remesh.test.ts` asserts every remeshed vertex stays within 8% of the source sphere's radius. Measured: ~1.14mm (4.5% of radius) for the refine path — its worst case is the coarse source's sagitta — and ~1e-6mm for the simplify path. This catches dents/bulges within the overall bounds that a bbox check cannot. (Chose option (a) — compute a real distance — over option (b) — reword the spec — as the stronger guarantee.)
