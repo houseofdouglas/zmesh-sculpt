@@ -3,6 +3,12 @@ import { sphere } from '../mesh/primitives';
 import { checkManifold } from '../validate/manifold';
 import { remesh, RemeshValidationError } from './remesh';
 
+/** How close `actual` must land to `target` (as a fraction) for the correction-loop tests below. */
+function withinTolerance(actual: number, target: number, fraction: number): boolean {
+  const ratio = actual / target;
+  return ratio >= 1 - fraction && ratio <= 1 + fraction;
+}
+
 describe('remesh', () => {
   it('increases resolution toward a higher target, staying manifold and preserving the silhouette', async () => {
     const original = sphere(50, { widthSegments: 12, heightSegments: 8 }); // coarse, radius 25mm
@@ -59,4 +65,37 @@ describe('remesh', () => {
     // checkManifold itself is unaffected outside the mock.
     expect(checkManifold(original).ok).toBe(true);
   });
+
+  it('converges the output within tolerance of a large target jump from a coarse source mesh', async () => {
+    // Reproduces the exact scenario that first exposed the overshoot: a
+    // default-shaped sphere (not pre-refined) jumping straight to a much
+    // higher target. A single first-order estimate landed at 96,096 for
+    // an 80,000 target here (1.2x) before the correction loop existed.
+    const original = sphere(); // default segments, ~2,200 triangles
+    const target = 80_000;
+
+    const result = await remesh(original, target);
+
+    expect(withinTolerance(result.triangleCount, target, 0.15)).toBe(true);
+    expect(checkManifold(result).ok).toBe(true);
+  });
+
+  it('does not compound overshoot across a repeated remesh of an already-remeshed mesh', async () => {
+    // The worse of the two originally-observed cases: remeshing the
+    // *output* of a previous remesh (not the pristine original),
+    // jumping to a much higher target again. Chained overshoot without
+    // the correction loop reached 1.72x here (860,372 vs. a 500,000
+    // target); each remesh call restarts its own correction from
+    // scratch against whatever mesh it's actually given.
+    const original = sphere();
+    const firstTarget = 80_000;
+    const firstResult = await remesh(original, firstTarget);
+    expect(withinTolerance(firstResult.triangleCount, firstTarget, 0.15)).toBe(true);
+
+    const secondTarget = 500_000;
+    const secondResult = await remesh(firstResult, secondTarget);
+
+    expect(withinTolerance(secondResult.triangleCount, secondTarget, 0.2)).toBe(true);
+    expect(checkManifold(secondResult).ok).toBe(true);
+  }, 15_000);
 });
